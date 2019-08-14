@@ -8,20 +8,20 @@ from Inception4 import inceptionv4
 # Device configuration
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') #torch.device('cpu')
 
-# Mesh
-xv, yv = torch.meshgrid((torch.linspace(0,1,600), torch.linspace(1,0,600)))
-xv = xv.reshape(-1).to(device)
-yv = yv.reshape(-1).to(device)
-
 class PlaneResLayer(nn.Module):
     def __init__(self):
         super(PlaneResLayer,self).__init__()
         self.plane = Variable(torch.tensor([0.5,0.5,0.5,0.5]), requires_grad=True).to(device)
+	# Mesh
+        xv, yv = torch.meshgrid((torch.linspace(0,1,600), torch.linspace(1,0,600)))
+        self.xv = xv.reshape(-1).to(device)
+        self.yv = yv.reshape(-1).to(device)
+
 
     def forward(self, image):
         batch, channel, height, width = image.shape
         image = image.reshape(batch,1,-1)
-        points = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),image]).permute([1,2,3,0])
+        points = torch.stack([self.xv.repeat(batch,1,1),self.yv.repeat(batch,1,1),image]).permute([1,2,3,0])
         res = torch.matmul(points, self.plane[0:3]) + self.plane[3] / torch.norm(self.plane[0:3])
         return res.view(batch,1,height, width).permute(0,1,3,2)
 
@@ -30,11 +30,15 @@ class SphereResLayer(nn.Module):
     def __init__(self):
         super(SphereResLayer,self).__init__()
         self.shpere = Variable(torch.tensor([0.5,0.5,0.5,0.25]),requires_grad=True).to(device)
+	# Mesh
+        xv, yv = torch.meshgrid((torch.linspace(0,1,600), torch.linspace(1,0,600)))
+        self.xv = xv.reshape(-1).to(device)
+        self.yv = yv.reshape(-1).to(device)
 
     def forward(self, image):
         batch, channel, height, width = image.shape
         image = image.reshape(batch,1,-1)
-        points = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),image]).permute([1,2,3,0])
+        points = torch.stack([self.xv.repeat(batch,1,1),self.yv.repeat(batch,1,1),image]).permute([1,2,3,0])
         res = torch.norm(points-self.shpere[0:3], dim=3) - self.shpere[3]
         return res.view(batch,1,height, width).permute(0,1,3,2)
 
@@ -43,11 +47,15 @@ class CylLayer(nn.Module):
     def __init__(self):
         super(CylLayer,self).__init__()
         self.cylinder = Variable(torch.tensor([0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12]), requires_grad=True).to(device)
+	# Mesh
+        xv, yv = torch.meshgrid((torch.linspace(0,1,600), torch.linspace(1,0,600)))
+        self.xv = xv.reshape(-1).to(device)
+        self.yv = yv.reshape(-1).to(device)
 
     def forward(self, image):
         batch, channel, height, width = image.shape
         image = image.reshape(batch,1,-1)
-        points = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),image]).permute([1,2,3,0])
+        points = torch.stack([self.xv.repeat(batch,1,1),self.yv.repeat(batch,1,1),image]).permute([1,2,3,0])
         AC = points - self.cylinder[0:3]
         AB = self.cylinder[3:6]
         res = torch.norm(torch.cross(AC,AB.repeat(batch,1,height**2,1), dim=3), dim=3) - self.cylinder[6]
