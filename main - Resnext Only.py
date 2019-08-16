@@ -10,7 +10,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import os
 from DrawDataset import MyDataset
-from model import PCRN
+from model import resnext
 
 ###############################################################################################################################
 # Device configuration
@@ -31,7 +31,8 @@ class MyTransform(object):
         tensor = torch.abs(tensor-1)
         return tensor[0,:,:].unsqueeze(0)
 
-transformations = transforms.Compose([transforms.ToTensor(),
+transformations = transforms.Compose([torchvision.transforms.Resize((300,300)),
+                                      transforms.ToTensor(),
                                       MyTransform()])
 
 
@@ -59,7 +60,7 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 
 # Loading model
-model = nn.DataParallel(PCRN(), device_ids=[1, 2, 3])
+model = nn.DataParallel(resnext(), device_ids=[1, 2, 3, 4])
 model = model.to(device)
 
 # Loss and optimizer
@@ -77,19 +78,13 @@ for epoch in range(num_epochs):
     exp_lr_scheduler.step()
     meanLoss = 0
     for i, (images, labels) in enumerate(train_loader):
+        if i ==67:
+            print(train_sampler)
         images = images.to(device)
         labels = labels.to(device)
-	# Mesh
-        xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600), torch.linspace(1,0,steps=600)))
-        xv = xv.reshape(-1).to(device)
-        yv = yv.reshape(-1).to(device)
-        batch, channel, height, width = images.shape
-        images = images.reshape(batch,1,-1)
-        images = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),images]).permute([1,2,3,0])
-        print(xv.size())
         #         print(images.shape)
         # Forward pass
-        outputs = model(images, xv, yv)
+        outputs = model(images)
         loss = criterion(outputs, labels)
         meanLoss += loss.cpu().detach().numpy()
         # Backward and optimize
