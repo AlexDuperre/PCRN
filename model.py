@@ -6,16 +6,16 @@ from torch.autograd import Variable
 from Inception4 import inceptionv4
 
 # Device configuration
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') #torch.device('cpu')
+#device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu') #torch.device('cpu')
 
 class PlaneResLayer(nn.Module):
     def __init__(self):
         super(PlaneResLayer,self).__init__()
-        self.plane = Variable(torch.tensor([0.5,0.5,0.5,0.5]), requires_grad=True).to(device)
+        self.plane = Variable(torch.tensor([0.5,0.5,0.5,0.5], device="cuda"), requires_grad=True)
 	# Mesh
-        xv, yv = torch.meshgrid((torch.linspace(0,1,600), torch.linspace(1,0,600)))
-        self.xv = xv.reshape(-1).to(device)
-        self.yv = yv.reshape(-1).to(device)
+        xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600, device="cuda"), torch.linspace(1,0,steps=600, device="cuda")))
+        self.xv = xv.reshape(-1)
+        self.yv = yv.reshape(-1)
 
 
     def forward(self, image):
@@ -29,11 +29,11 @@ class PlaneResLayer(nn.Module):
 class SphereResLayer(nn.Module):
     def __init__(self):
         super(SphereResLayer,self).__init__()
-        self.shpere = Variable(torch.tensor([0.5,0.5,0.5,0.25]),requires_grad=True).to(device)
+        self.shpere = Variable(torch.tensor([0.5,0.5,0.5,0.25], device="cuda"),requires_grad=True)
 	# Mesh
-        xv, yv = torch.meshgrid((torch.linspace(0,1,600), torch.linspace(1,0,600)))
-        self.xv = xv.reshape(-1).to(device)
-        self.yv = yv.reshape(-1).to(device)
+        xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600, device="cuda"), torch.linspace(1,0,steps=600, device="cuda")))
+        self.xv = xv.reshape(-1)
+        self.yv = yv.reshape(-1)
 
     def forward(self, image):
         batch, channel, height, width = image.shape
@@ -46,11 +46,11 @@ class SphereResLayer(nn.Module):
 class CylLayer(nn.Module):
     def __init__(self):
         super(CylLayer,self).__init__()
-        self.cylinder = Variable(torch.tensor([0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12]), requires_grad=True).to(device)
+        self.cylinder = Variable(torch.tensor([0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12],device="cuda"), requires_grad=True)
 	# Mesh
-        xv, yv = torch.meshgrid((torch.linspace(0,1,600), torch.linspace(1,0,600)))
-        self.xv = xv.reshape(-1).to(device)
-        self.yv = yv.reshape(-1).to(device)
+        xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600, device="cuda"), torch.linspace(1,0,steps=600, device="cuda")))
+        self.xv = xv.reshape(-1)
+        self.yv = yv.reshape(-1)
 
     def forward(self, image):
         batch, channel, height, width = image.shape
@@ -150,14 +150,14 @@ class ResBlock(nn.Module):
             # self.maxPool3)
 
     def forward(self, image):
-        out1 = self.plane_layer_1.forward(image)
-        out2 = self.plane_layer_2.forward(image)
-        out3 = self.plane_layer_3.forward(image)
-        out = torch.cat([out1,out2,out3],dim=1)
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        return out
+        out1 = self.plane_layer_1(image)
+        #out2 = self.plane_layer_2(image)
+        #out3 = self.plane_layer_3(image)
+        #out = torch.cat([out1,out2,out3],dim=1)
+        #out = self.layer1(out)
+        #out = self.layer2(out)
+        #out = self.layer3(out)
+        return out1
 
 # block = ResBlock(PlaneResLayer)
 # out = block.forward(pdf)
@@ -172,9 +172,9 @@ class ResidualNet(nn.Module):
         self.block3 = ResBlock(CylLayer)
 
     def forward(self, image):
-        out1 = self.block1.forward(image)
-        out2 = self.block2.forward(image)
-        out3 = self.block3.forward(image)
+        out1 = self.block1(image)
+        out2 = self.block2(image)
+        out3 = self.block3(image)
         return torch.cat([out1,out2,out3],dim=1)
 
 
@@ -186,12 +186,13 @@ class ResidualNet(nn.Module):
 
 
 def PCRN(num_classes= 55):
-    model = pretrainedmodels.models.resnext101_32x4d(num_classes=1000, pretrained='imagenet')
+    model = pretrainedmodels.models.resnext101_32x4d(num_classes=1000, pretrained=None)
     residualNet = [ResidualNet()]
     residualNet.extend(list(model.features))
     model.features = nn.Sequential(*residualNet)
     model.last_linear = nn.Linear(32768, num_classes)
     return model
+
 
 def Resception(num_classes= 55):
     model = inceptionv4(num_classes=1001, pretrained='imagenet+background')

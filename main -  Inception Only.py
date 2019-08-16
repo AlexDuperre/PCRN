@@ -12,15 +12,18 @@ import os
 from DrawDataset import MyDataset
 from Inception4 import inceptionv4
 
+#import torch.multiprocessing
+#torch.multiprocessing.set_sharing_strategy('file_system')
+
 ###############################################################################################################################
 # Device configuration
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyper parameters
 num_epochs = 20
 num_classes = 55
-batch_size = 40
+batch_size = 256
 
 learning_rate = 0.00001
 validationRatio = 0.1
@@ -36,7 +39,7 @@ transformations = transforms.Compose([torchvision.transforms.Resize((300,300)),
                                       MyTransform()])
 
 
-dataset = MyDataset('./dataset/ShapeNetCoreV2 - Depth/', transform= transformations)
+dataset = MyDataset('../../../DATA/alex/ShapeNetCoreV2 - Depth/', transform= transformations)
 
 
 # sending to loader
@@ -51,11 +54,13 @@ valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(valid_indices)
 train_loader = torch.utils.data.DataLoader(dataset=dataset,
                                            batch_size=batch_size,
                                            sampler = train_sampler,
-                                           shuffle=False)
+                                           shuffle=False,
+                                           num_workers=1)
 valid_loader = torch.utils.data.DataLoader(dataset=dataset,
                                            batch_size=batch_size,
                                            sampler = valid_sampler,
-                                           shuffle=False)
+                                           shuffle=False,
+                                           num_workers=1)
 
 
 # for i, (images, labels) in enumerate(train_loader):
@@ -72,6 +77,7 @@ model.features= nn.Sequential(*first_conv_layer )
 # Bridging for image size
 
 model.last_linear = nn.Linear(1536 , num_classes)
+model = nn.DataParallel(model, device_ids=[1, 2, 3, 5, 6, 7])
 model = model.to(device)
 
 # Loss and optimizer

@@ -35,7 +35,7 @@ transformations = transforms.Compose([transforms.ToTensor(),
                                       MyTransform()])
 
 
-dataset = MyDataset('./dataset/ShapeNetCoreV2 - Depth/', transform= transformations)
+dataset = MyDataset('../../../DATA/alex/ShapeNetCoreV2 - Depth/', transform= transformations)
 
 
 # sending to loader
@@ -59,7 +59,7 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 
 # Loading model
-model = Resception()
+model = nn.DataParallel(Resception())
 model = model.to(device)
 
 # Loss and optimizer

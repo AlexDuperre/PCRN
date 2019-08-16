@@ -14,7 +14,7 @@ from model import PCRN
 
 ###############################################################################################################################
 # Device configuration
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') #torch.device('cpu') #
+device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu') #torch.device('cpu') #
 
 
 # Hyper parameters
@@ -59,7 +59,7 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 
 # Loading model
-model = nn.DataParallel(PCRN())
+model = nn.DataParallel(PCRN(), device_ids=[1, 2, 3, 5, 6, 7])
 model = model.to(device)
 
 # Loss and optimizer
