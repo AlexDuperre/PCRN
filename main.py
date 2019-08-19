@@ -16,13 +16,13 @@ from model import PCRN
 # Device configuration
 # device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu') #torch.device('cpu') #
 
-#os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "5,6,7"
 
 
 # Hyper parameters
 num_epochs = 5
 num_classes = 55
-batch_size = 4
+batch_size = 15
 
 learning_rate = 0.0001
 validationRatio = 0.1
@@ -37,7 +37,7 @@ transformations = transforms.Compose([transforms.ToTensor(),
                                       MyTransform()])
 
 
-dataset = MyDataset('../../../DATA/alex/ShapeNetCoreV2 - Depth/', transform= transformations)
+dataset = MyDataset('/media/SSD/DATA/alex/ShapeNetCoreV2 - Depth/', transform= transformations)
 
 
 # sending to loader
@@ -61,8 +61,8 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 
 # Loading model
-model = PCRN(4,600,600) #.to(device)
-#model = nn.DataParallel(model,  device_ids=[0, 3, 4])
+model = PCRN(9,600,600) #.to(device)
+model = nn.DataParallel(model,  device_ids=[0,1,2])
 model = model.cuda()
 
 # Loss and optimizer
@@ -88,12 +88,10 @@ for epoch in range(num_epochs):
         yv = yv.reshape(-1).cuda() #to(device)
         batch, channel, height, width = images.shape
         images = images.reshape(batch,1,-1)
-        images = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),images]).permute([1,2,3,0])
+        images = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),images]).permute([1,2,3,0]).cuda()
         #         print(images.shape)
         # Forward pass
         outputs = model(images, xv, yv)
-        print(outputs.shape)
-        print(labels.shape)
         outputs = outputs.squeeze(1) 
 
         loss = criterion(outputs, labels)

@@ -2,7 +2,7 @@ import pretrainedmodels
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
+from torch.nn import Parameter
 from Inception4 import inceptionv4
 
 # Device configuration
@@ -11,7 +11,7 @@ from Inception4 import inceptionv4
 class PlaneResLayer(nn.Module):
     def __init__(self,batch, width, height):
         super(PlaneResLayer,self).__init__()
-        self.plane = Variable(torch.tensor([0.5,0.5,0.5,0.5]), requires_grad=True).cuda()
+        self.plane = Parameter(torch.tensor([0.5,0.5,0.5,0.5]), requires_grad=True)
         self.batch = batch
         self.width = width
         self.height = height
@@ -33,7 +33,7 @@ class PlaneResLayer(nn.Module):
 class SphereResLayer(nn.Module):
     def __init__(self):
         super(SphereResLayer,self).__init__()
-        self.shpere = Variable(torch.tensor([0.5,0.5,0.5,0.25], device="cuda"),requires_grad=True)
+        self.shpere = Parameter(torch.tensor([0.5,0.5,0.5,0.25], device="cuda"),requires_grad=True)
 	# Mesh
         #xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600, device="cuda"), torch.linspace(1,0,steps=600, device="cuda")))
         #self.xv = xv.reshape(-1)
@@ -50,7 +50,7 @@ class SphereResLayer(nn.Module):
 class CylLayer(nn.Module):
     def __init__(self):
         super(CylLayer,self).__init__()
-        self.cylinder = Variable(torch.tensor([0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12],device="cuda"), requires_grad=True)
+        self.cylinder = Parameter(torch.tensor([0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12],device="cuda"), requires_grad=True)
 	# Mesh
         #xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600, device="cuda"), torch.linspace(1,0,steps=600, device="cuda")))
         #self.xv = xv.reshape(-1)
@@ -175,7 +175,7 @@ class ResidualNet(nn.Module):
         #self.block2 = ResBlock(SphereResLayer)
         #self.block3 = ResBlock(CylLayer)
         self.classifier = nn.Sequential(
-            nn.Linear(600, 1024),
+            nn.Linear(360000, 1024),
             nn.ReLU(True),
             nn.Linear(1024, 1024),
             nn.ReLU(True),
@@ -186,7 +186,7 @@ class ResidualNet(nn.Module):
         #out2 = self.block2(image)
         #out3 = self.block3(image)
         #out = out1.view(out1.size(),-1)
-        out = out1.view(-1)
+        out = out1.reshape(out1.shape[0],-1)
         out = self.classifier(out)
         return out#torch.cat([out1,out2,out3],dim=1)
 
@@ -198,7 +198,7 @@ class ResidualNet(nn.Module):
 
 
 
-def PCRN(batch, width, height, num_classes= 55):
+def PCRN(batch, width, height):#, num_classes= 55):
     #model = pretrainedmodels.models.resnext101_32x4d(num_classes=1000, pretrained=None)
     #residualNet = [ResidualNet()]
     #residualNet.extend(list(model.features))
