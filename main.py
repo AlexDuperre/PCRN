@@ -14,13 +14,15 @@ from model import PCRN
 
 ###############################################################################################################################
 # Device configuration
-device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu') #torch.device('cpu') #
+# device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu') #torch.device('cpu') #
+
+#os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
 
 
 # Hyper parameters
 num_epochs = 5
 num_classes = 55
-batch_size = 5
+batch_size = 4
 
 learning_rate = 0.0001
 validationRatio = 0.1
@@ -59,8 +61,9 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 
 # Loading model
-model = nn.DataParallel(PCRN(), device_ids=[1, 2, 3])
-model = model.to(device)
+model = PCRN(4,600,600) #.to(device)
+#model = nn.DataParallel(model,  device_ids=[0, 3, 4])
+model = model.cuda()
 
 # Loss and optimizer
 criterion = nn.CrossEntropyLoss()
@@ -77,19 +80,22 @@ for epoch in range(num_epochs):
     exp_lr_scheduler.step()
     meanLoss = 0
     for i, (images, labels) in enumerate(train_loader):
-        images = images.to(device)
-        labels = labels.to(device)
+        images = images.cuda() #to(device)
+        labels = labels.cuda() #to(device)
 	# Mesh
         xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600), torch.linspace(1,0,steps=600)))
-        xv = xv.reshape(-1).to(device)
-        yv = yv.reshape(-1).to(device)
+        xv = xv.reshape(-1).cuda() #to(device)
+        yv = yv.reshape(-1).cuda() #to(device)
         batch, channel, height, width = images.shape
         images = images.reshape(batch,1,-1)
         images = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),images]).permute([1,2,3,0])
-        print(xv.size())
         #         print(images.shape)
         # Forward pass
         outputs = model(images, xv, yv)
+        print(outputs.shape)
+        print(labels.shape)
+        outputs = outputs.squeeze(1) 
+
         loss = criterion(outputs, labels)
         meanLoss += loss.cpu().detach().numpy()
         # Backward and optimize
@@ -110,8 +116,8 @@ for epoch in range(num_epochs):
         meanLoss = 0
         misclassified = np.zeros(num_classes)
         for images, labels in valid_loader:
-            images = images.to(device)
-            labels = labels.to(device)
+            images = images.cuda() #to(device)
+            labels = labels.cuda() #to(device)
             outputs = model(images)
             loss = criterion(outputs, labels)
             meanLoss += loss.cpu().detach().numpy()
