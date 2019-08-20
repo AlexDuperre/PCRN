@@ -49,8 +49,8 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.main">
-    <configuration name="Residual_Cylinder" type="PythonConfigurationType" factoryName="Python" temporary="true">
+  <component name="RunManager" selected="Python.PolynomialChannels">
+    <configuration name="PolynomialChannels" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="PCRN" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -63,7 +63,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Residual_Cylinder.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/PolynomialChannels.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -161,19 +161,19 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.Residual_Cylinder" />
       <item itemvalue="Python.main" />
       <item itemvalue="Python.model" />
       <item itemvalue="Python.main - Resception" />
       <item itemvalue="Python.main -  Inception Only" />
+      <item itemvalue="Python.PolynomialChannels" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.PolynomialChannels" />
         <item itemvalue="Python.main" />
         <item itemvalue="Python.main - Resception" />
         <item itemvalue="Python.main -  Inception Only" />
         <item itemvalue="Python.model" />
-        <item itemvalue="Python.Residual_Cylinder" />
       </list>
     </recent_temporary>
   </component>
@@ -187,7 +187,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1564452226669</updated>
-      <workItem from="1566199163259" duration="19987000" />
+      <workItem from="1566199163259" duration="26484000" />
     </task>
     <servers />
   </component>
@@ -232,11 +232,24 @@
           <line>23</line>
           <option name="timeStamp" value="69" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/PolynomialChannels.py</url>
+          <line>32</line>
+          <option name="timeStamp" value="76" />
+        </line-breakpoint>
       </breakpoints>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/PCRN$main.coverage" NAME="main Coverage Results" MODIFIED="1566269161530" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/PCRN$PolynomialChannels.coverage" NAME="PolynomialChannels Coverage Results" MODIFIED="1566284240898" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="masterDetails">
     <states>

@@ -179,7 +179,7 @@ def PCRN(batch, width, height, num_classes= 55):
     residualNet.extend(list(model.features))
     model.features = nn.Sequential(*residualNet)
     model.last_linear = nn.Linear(32768, num_classes)
-    return model#ResidualNet(batch, width, height)#model
+    return model
 
 
 def resnext(num_classes=55):
