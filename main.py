@@ -14,15 +14,16 @@ from model import PCRN
 
 ###############################################################################################################################
 # Device configuration
-# device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu') #torch.device('cpu') #
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "5,6,7"
+DEVICE_ID = "5,6,7"
+os.environ["CUDA_VISIBLE_DEVICES"] = DEVICE_ID
 
 
 # Hyper parameters
 num_epochs = 5
 num_classes = 55
-batch_size = 15
+batch_size = 6*DEVICE_ID.split(",").__len__()
+
+print("Using a batch size of :", batch_size)
 
 learning_rate = 0.0001
 validationRatio = 0.1
@@ -36,7 +37,7 @@ class MyTransform(object):
 transformations = transforms.Compose([transforms.ToTensor(),
                                       MyTransform()])
 
-
+print("Creating Dataset")
 dataset = MyDataset('/media/SSD/DATA/alex/ShapeNetCoreV2 - Depth/', transform= transformations)
 
 
@@ -61,7 +62,7 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 
 # Loading model
-model = PCRN(9,600,600) #.to(device)
+model = PCRN(batch_size,600,600) #.to(device)
 model = nn.DataParallel(model,  device_ids=[0,1,2])
 model = model.cuda()
 
@@ -71,31 +72,33 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # Decay LR by a factor of 0.1 every 7 epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.1)
 
-##### Train the model
+##### Train the model #####
+print("Training started")
 trainLoss = []
 validLoss = []
 validAcc = []
 total_step = len(train_loader)
 for epoch in range(num_epochs):
-    exp_lr_scheduler.step()
     meanLoss = 0
     for i, (images, labels) in enumerate(train_loader):
-        images = images.cuda() #to(device)
-        labels = labels.cuda() #to(device)
-	# Mesh
+        images = images.cuda()
+        labels = labels.cuda()
+
+        # Mesh
         xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600), torch.linspace(1,0,steps=600)))
-        xv = xv.reshape(-1).cuda() #to(device)
-        yv = yv.reshape(-1).cuda() #to(device)
+        xv = xv.reshape(-1).cuda()
+        yv = yv.reshape(-1).cuda()
+
         batch, channel, height, width = images.shape
         images = images.reshape(batch,1,-1)
         images = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),images]).permute([1,2,3,0]).cuda()
-        #         print(images.shape)
+
         # Forward pass
-        outputs = model(images, xv, yv)
-        outputs = outputs.squeeze(1) 
+        outputs = model(images)
 
         loss = criterion(outputs, labels)
         meanLoss += loss.cpu().detach().numpy()
+
         # Backward and optimize
         optimizer.zero_grad()
         loss.backward()
@@ -104,7 +107,9 @@ for epoch in range(num_epochs):
         if (i + 1) % 50 == 0:
             print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
                   .format(epoch + 1, num_epochs, i + 1, total_step, loss.item()))
+    # Append mean loss fo graphing and apply lr scheduler
     trainLoss.append(meanLoss / (i + 1))
+    exp_lr_scheduler.step()
 
     # Test the model
     model.eval()  # eval mode (batchnorm uses moving mean/variance instead of mini-batch mean/variance)
