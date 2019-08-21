@@ -119,8 +119,18 @@ for epoch in range(num_epochs):
         meanLoss = 0
         misclassified = np.zeros(num_classes)
         for images, labels in valid_loader:
-            images = images.cuda() #to(device)
-            labels = labels.cuda() #to(device)
+            images = images.cuda()
+            labels = labels.cuda()
+
+            # Mesh
+            xv, yv = torch.meshgrid((torch.linspace(0, 1, steps=600), torch.linspace(1, 0, steps=600)))
+            xv = xv.reshape(-1).cuda()
+            yv = yv.reshape(-1).cuda()
+
+            batch, channel, height, width = images.shape
+            images = images.reshape(batch, 1, -1)
+            images = torch.stack([xv.repeat(batch, 1, 1), yv.repeat(batch, 1, 1), images]).permute([1, 2, 3, 0]).cuda()
+
             outputs = model(images)
             loss = criterion(outputs, labels)
             meanLoss += loss.cpu().detach().numpy()

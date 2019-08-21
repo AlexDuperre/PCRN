@@ -49,7 +49,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.PolynomialChannels">
+  <component name="RunManager" selected="Python.main">
     <configuration name="PolynomialChannels" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="PCRN" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -169,8 +169,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.PolynomialChannels" />
         <item itemvalue="Python.main" />
+        <item itemvalue="Python.PolynomialChannels" />
         <item itemvalue="Python.main - Resception" />
         <item itemvalue="Python.main -  Inception Only" />
         <item itemvalue="Python.model" />
@@ -187,7 +187,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1564452226669</updated>
-      <workItem from="1566199163259" duration="26484000" />
+      <workItem from="1566199163259" duration="27923000" />
     </task>
     <servers />
   </component>
@@ -248,7 +248,7 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/PCRN$main.coverage" NAME="main Coverage Results" MODIFIED="1566269161530" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/PCRN$main.coverage" NAME="main Coverage Results" MODIFIED="1566348995975" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/PCRN$PolynomialChannels.coverage" NAME="PolynomialChannels Coverage Results" MODIFIED="1566284240898" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="masterDetails">
