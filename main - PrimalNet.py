@@ -1,3 +1,4 @@
+# from PolynomialChannels import get_polynomial
 import torch
 import torch.nn as nn
 import torchvision
@@ -10,18 +11,22 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import os
 from DrawDataset import MyDataset
-from model import PCRN
+from model2 import PrimalNet
+
+import itertools
+from functools import reduce
 
 ###############################################################################################################################
+
 # Device configuration
-DEVICE_ID = "5,6,7"
+DEVICE_ID = "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = DEVICE_ID
 
 
 # Hyper parameters
-num_epochs = 10
+num_epochs = 5
 num_classes = 55
-batch_size = 6*DEVICE_ID.split(",").__len__()
+batch_size = 5*DEVICE_ID.split(",").__len__()
 
 print("Using a batch size of :", batch_size)
 
@@ -62,8 +67,8 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 
 # Loading model
-model = PCRN(batch_size,600,600) #.to(device)
-model = nn.DataParallel(model,  device_ids=[0,1,2])
+model = PrimalNet(3,[3,9,19]) #.to(device)
+model = nn.DataParallel(model,  device_ids=[0])
 model = model.cuda()
 
 # Loss and optimizer
@@ -86,12 +91,11 @@ for epoch in range(num_epochs):
 
         # Mesh
         xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600), torch.linspace(1,0,steps=600)))
-        xv = xv.reshape(-1).cuda()
-        yv = yv.reshape(-1).cuda()
+        xv = xv.cuda()
+        yv = yv.cuda()
 
         batch, channel, height, width = images.shape
-        images = images.reshape(batch,1,-1)
-        images = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),images]).permute([1,2,3,0]).cuda()
+        images = [xv.repeat(batch,1,1,1),yv.repeat(batch,1,1,1),images]
 
         # Forward pass
         outputs = model(images)
@@ -124,12 +128,11 @@ for epoch in range(num_epochs):
 
             # Mesh
             xv, yv = torch.meshgrid((torch.linspace(0, 1, steps=600), torch.linspace(1, 0, steps=600)))
-            xv = xv.reshape(-1).cuda()
-            yv = yv.reshape(-1).cuda()
+            xv = xv.cuda()
+            yv = yv.cuda()
 
             batch, channel, height, width = images.shape
-            images = images.reshape(batch, 1, -1)
-            images = torch.stack([xv.repeat(batch, 1, 1), yv.repeat(batch, 1, 1), images]).permute([1, 2, 3, 0]).cuda()
+            images = [xv.repeat(batch, 1, 1, 1), yv.repeat(batch, 1, 1, 1), images]
 
             outputs = model(images)
             loss = criterion(outputs, labels)
