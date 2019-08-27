@@ -1,24 +1,27 @@
+import os
+
+# Device configuration
+DEVICE_ID = "1,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = DEVICE_ID
+
+import numpy as np
 import torch
 import torch.nn as nn
-import torchvision
 import torchvision.transforms as transforms
 from torch.optim import lr_scheduler
 import matplotlib.pyplot as plt
 from torch.utils.data.dataset import Dataset
-import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
-import os
 from DrawDataset import MyDataset
 from model import PCRN
+from torch.utils.tensorboard import SummaryWriter
 
 ###############################################################################################################################
-# Device configuration
-device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu') #torch.device('cpu') #
+# Initialize Tensorboard Summaries
+writer = SummaryWriter()
 
 
 # Hyper parameters
-num_epochs = 5
+num_epochs = 10
 num_classes = 55
 batch_size = 5
 
@@ -59,41 +62,62 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 
 # Loading model
-model = nn.DataParallel(PCRN(), device_ids=[1, 2, 3, 5, 6, 7])
-model = model.to(device)
+model = PCRN(batch_size,600,600) #.to(device)
+model = nn.DataParallel(model,  device_ids=[0,1])
+model = model.cuda()
 
 # Loss and optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.1)
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=6, gamma=0.1)
 
 ##### Train the model
 trainLoss = []
 validLoss = []
 validAcc = []
 total_step = len(train_loader)
+
+f = open("planes.txt", "w+")
+g = open("spheres.txt", "w+")
+h = open("cyl.txt", "w+")
+
 for epoch in range(num_epochs):
     exp_lr_scheduler.step()
     meanLoss = 0
-    for i, (images, labels) in enumerate(train_loader):
-        if i ==67:
-            print(train_sampler)
-        images = images.to(device)
-        labels = labels.to(device)
-        #         print(images.shape)
-        # Forward pass
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        meanLoss += loss.cpu().detach().numpy()
-        # Backward and optimize
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    with torch.autograd.detect_anomaly():
+        for i, (images, labels) in enumerate(train_loader):
+            images = images.cuda()
+            labels = labels.cuda()
 
-        if (i + 1) % 50 == 0:
-            print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
-                  .format(epoch + 1, num_epochs, i + 1, total_step, loss.item()))
+            # Mesh
+            xv, yv = torch.meshgrid((torch.linspace(0,1,steps=600), torch.linspace(1,0,steps=600)))
+            xv = xv.reshape(-1).cuda()
+            yv = yv.reshape(-1).cuda()
+
+            batch, channel, height, width = images.shape
+            images = images.reshape(batch,1,-1)
+            images = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),images]).permute([1,2,3,0]).cuda()
+
+            # Forward pass
+            outputs = model(images)
+
+            loss = criterion(outputs, labels)
+            meanLoss += loss.cpu().detach().numpy()
+
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if (i + 1) % 50 == 0:
+                print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
+                      .format(epoch + 1, num_epochs, i + 1, total_step, loss.item()))
+                f.write(str(list(model.module.features[0].block1.res_layer_1.plane.T.detach().cpu().numpy())) + "\n")
+                g.write(str(list(model.module.features[0].block2.res_layer_1.sphere.T.detach().cpu().numpy())) + "\n")
+                h.write(str(list(model.module.features[0].block3.res_layer_1.cylinder.T.detach().cpu().numpy())) + "\n")
+
+    # Append mean loss fo graphing and apply lr scheduler
     trainLoss.append(meanLoss / (i + 1))
 
     # Test the model
@@ -123,6 +147,10 @@ for epoch in range(num_epochs):
         misclassified /= (total - correct)
         # print(misclassified*100)
 torch.save(model.state_dict(), 'model.ckpt')
+
+f.close()
+g.close()
+h.close()
 
 x = np.linspace(0,num_epochs,num_epochs)
 plt.subplot(1,2,1)
