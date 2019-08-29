@@ -10,17 +10,17 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import os
 from DrawDataset import MyDataset
-from model import Resception
+from model import resnext
 
 ###############################################################################################################################
 # Device configuration
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') #torch.device('cpu') #
+device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu') #torch.device('cpu') #
 
 
 # Hyper parameters
 num_epochs = 5
 num_classes = 55
-batch_size = 2
+batch_size = 5
 
 learning_rate = 0.0001
 validationRatio = 0.1
@@ -31,7 +31,8 @@ class MyTransform(object):
         tensor = torch.abs(tensor-1)
         return tensor[0,:,:].unsqueeze(0)
 
-transformations = transforms.Compose([transforms.ToTensor(),
+transformations = transforms.Compose([torchvision.transforms.Resize((300,300)),
+                                      transforms.ToTensor(),
                                       MyTransform()])
 
 
@@ -59,7 +60,7 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 
 # Loading model
-model = nn.DataParallel(Resception())
+model = nn.DataParallel(resnext(), device_ids=[1, 2, 3, 4])
 model = model.to(device)
 
 # Loss and optimizer
@@ -77,6 +78,8 @@ for epoch in range(num_epochs):
     exp_lr_scheduler.step()
     meanLoss = 0
     for i, (images, labels) in enumerate(train_loader):
+        if i ==67:
+            print(train_sampler)
         images = images.to(device)
         labels = labels.to(device)
         #         print(images.shape)
@@ -88,7 +91,6 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
 
         if (i + 1) % 50 == 0:
             print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'

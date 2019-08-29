@@ -2,56 +2,57 @@ import pretrainedmodels
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
+from torch.nn import Parameter
 from Inception4 import inceptionv4
 
-# Device configuration
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') #torch.device('cpu')
-
-# Mesh
-xv, yv = torch.meshgrid((torch.linspace(0,1,600), torch.linspace(1,0,600)))
-xv = xv.reshape(-1).to(device)
-yv = yv.reshape(-1).to(device)
 
 class PlaneResLayer(nn.Module):
-    def __init__(self):
+    def __init__(self,batch, width, height):
         super(PlaneResLayer,self).__init__()
-        self.plane = Variable(torch.tensor([0.5,0.5,0.5,0.5]), requires_grad=True).to(device)
+        self.plane = Parameter(torch.tensor([0.5,0.5,0.5,0.5]), requires_grad=True)
+        self.batch = batch
+        self.width = width
+        self.height = height
 
-    def forward(self, image):
-        batch, channel, height, width = image.shape
-        image = image.reshape(batch,1,-1)
-        points = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),image]).permute([1,2,3,0])
+    def forward(self, points):
+        batch, channel, height, width = points.shape
         res = torch.matmul(points, self.plane[0:3]) + self.plane[3] / torch.norm(self.plane[0:3])
-        return res.view(batch,1,height, width).permute(0,1,3,2)
+        return res.view(batch,1,self.height, self.width).permute(0,1,3,2)
 
 
 class SphereResLayer(nn.Module):
-    def __init__(self):
+    def __init__(self,batch, width, height):
         super(SphereResLayer,self).__init__()
-        self.shpere = Variable(torch.tensor([0.5,0.5,0.5,0.25]),requires_grad=True).to(device)
-
-    def forward(self, image):
-        batch, channel, height, width = image.shape
-        image = image.reshape(batch,1,-1)
-        points = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),image]).permute([1,2,3,0])
-        res = torch.norm(points-self.shpere[0:3], dim=3) - self.shpere[3]
-        return res.view(batch,1,height, width).permute(0,1,3,2)
+        self.sphere = Parameter(torch.tensor([0.5,0.5,0.5,0.25]),requires_grad=True)
+        self.batch = batch
+        self.width = width
+        self.height = height
 
 
-class CylLayer(nn.Module):
-    def __init__(self):
-        super(CylLayer,self).__init__()
-        self.cylinder = Variable(torch.tensor([0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12]), requires_grad=True).to(device)
+    def forward(self, points):
+        batch, channel, height, width = points.shape
+        res = torch.norm(points-self.sphere[0:3], dim=3) - self.sphere[3]
+        return res.view(batch,1,self.height, self.width).permute(0,1,3,2)
 
-    def forward(self, image):
-        batch, channel, height, width = image.shape
-        image = image.reshape(batch,1,-1)
-        points = torch.stack([xv.repeat(batch,1,1),yv.repeat(batch,1,1),image]).permute([1,2,3,0])
+
+class CylResLayer(nn.Module):
+    def __init__(self,batch, width, height):
+        super(CylResLayer,self).__init__()
+        self.cylinder = Parameter(torch.tensor([0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12]), requires_grad=True)
+        self.batch = batch
+        self.width = width
+        self.height = height
+
+
+    def forward(self, points):
+        batch, channel, height, width = points.shape
         AC = points - self.cylinder[0:3]
         AB = self.cylinder[3:6]
-        res = torch.norm(torch.cross(AC,AB.repeat(batch,1,height**2,1), dim=3), dim=3) - self.cylinder[6]
-        return res.view(batch,1,height, width).permute(0,1,3,2)
+        n = AB / (torch.norm(AB)+ 1e-5)
+        AD = torch.abs(torch.matmul(AC, n.transpose(0, -1)))
+        AC = torch.norm(AC, dim=3)
+        res = torch.sqrt(AC ** 2. - AD ** 2.) - self.cylinder[6]
+        return res.view(batch,1,self.height, self.width).permute(0,1,3,2)
 
 # TESTING
 from scipy.stats import multivariate_normal
@@ -96,9 +97,9 @@ pdf = torch.tensor(pdf).repeat([2,1,1,1]).float()
 class ResBlock(nn.Module):
     def __init__(self, ResLayer):
         super(ResBlock,self).__init__()
-        self.plane_layer_1 = ResLayer()
-        self.plane_layer_2 = ResLayer()
-        self.plane_layer_3 = ResLayer()
+        self.res_layer_1 = ResLayer
+        self.res_layer_2 = ResLayer
+        self.res_layer_3 = ResLayer
 
         # Layer 2
         self.conv1 = nn.Conv2d(3, 64, kernel_size=5, stride=1, padding=2)
@@ -142,9 +143,9 @@ class ResBlock(nn.Module):
             # self.maxPool3)
 
     def forward(self, image):
-        out1 = self.plane_layer_1.forward(image)
-        out2 = self.plane_layer_2.forward(image)
-        out3 = self.plane_layer_3.forward(image)
+        out1 = self.res_layer_1(image)
+        out2 = self.res_layer_2(image)
+        out3 = self.res_layer_3(image)
         out = torch.cat([out1,out2,out3],dim=1)
         out = self.layer1(out)
         out = self.layer2(out)
@@ -157,33 +158,38 @@ class ResBlock(nn.Module):
 # plt.show()
 
 class ResidualNet(nn.Module):
-    def __init__(self):
+    def __init__(self,batch, width, height):
         super(ResidualNet,self).__init__()
-        self.block1 = ResBlock(PlaneResLayer)
-        self.block2 = ResBlock(SphereResLayer)
-        self.block3 = ResBlock(CylLayer)
+        self.block1 = ResBlock(PlaneResLayer(batch, width, height))
+        self.block2 = ResBlock(SphereResLayer(batch, width, height))
+        self.block3 = ResBlock(CylResLayer(batch, width, height))
 
     def forward(self, image):
-        out1 = self.block1.forward(image)
-        out2 = self.block2.forward(image)
-        out3 = self.block3.forward(image)
-        return torch.cat([out1,out2,out3],dim=1)
-
-
-# model = ResidualNet()
-# out = model.forward(pdf)
-# plt.imshow(out[0][0].detach().numpy())
-# plt.show()
+        out1 = self.block1(image)
+        out2 = self.block2(image)
+        out3 = self.block3(image)
+        out = torch.cat([out1,out2,out3],dim=1)
+        return out/out.max()
 
 
 
-def PCRN(num_classes= 55):
-    model = pretrainedmodels.models.resnext101_32x4d(num_classes=1000, pretrained='imagenet')
-    residualNet = [ResidualNet()]
+def PCRN(batch, width, height, num_classes= 55):
+    model = pretrainedmodels.models.resnext101_32x4d(num_classes=1000, pretrained=None)
+    residualNet = [ResidualNet(batch, width, height)]
     residualNet.extend(list(model.features))
     model.features = nn.Sequential(*residualNet)
     model.last_linear = nn.Linear(32768, num_classes)
     return model
+
+
+def resnext(num_classes=55):
+    model = pretrainedmodels.models.resnext101_32x4d(num_classes=1000, pretrained=None)   
+    first_conv_layer = [nn.Conv2d(1, 3, kernel_size=3, stride=1, padding=2, dilation=1, groups=1, bias=True)]
+    first_conv_layer.extend(list(model.features))
+    model.features= nn.Sequential(*first_conv_layer )
+    model.last_linear = nn.Linear(32768,num_classes)
+    return model
+
 
 def Resception(num_classes= 55):
     model = inceptionv4(num_classes=1001, pretrained='imagenet+background')
@@ -192,3 +198,18 @@ def Resception(num_classes= 55):
     model.features = nn.Sequential(*residualNet)
     model.last_linear = nn.Linear(1536, num_classes)
     return model
+
+class WeightClipper(object):
+
+    def __init__(self, frequency=1):
+        self.frequency = frequency
+
+    def __call__(self, module):
+        # filter the variables to get the ones you want
+        if hasattr(module, 'sphere'):
+            w2 = module.sphere.data[0:4].clamp(0,1)
+            #torch.clamp(module.sphere.data[0:4],0,1)
+            module.sphere.data[0:4] = w2
+        if hasattr(module, 'cylinder'):
+            w2 = module.cylinder.data[0:4].clamp(0, 1)
+            module.cylinder.data[0:4] = w2
