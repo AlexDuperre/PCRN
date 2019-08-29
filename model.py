@@ -35,9 +35,9 @@ class SphereResLayer(nn.Module):
         return res.view(batch,1,self.height, self.width).permute(0,1,3,2)
 
 
-class CylLayer(nn.Module):
+class CylResLayer(nn.Module):
     def __init__(self,batch, width, height):
-        super(CylLayer,self).__init__()
+        super(CylResLayer,self).__init__()
         self.cylinder = Parameter(torch.tensor([0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12]), requires_grad=True)
         self.batch = batch
         self.width = width
@@ -48,7 +48,7 @@ class CylLayer(nn.Module):
         batch, channel, height, width = points.shape
         AC = points - self.cylinder[0:3]
         AB = self.cylinder[3:6]
-        n = AB / torch.norm(AB)
+        n = AB / (torch.norm(AB)+ 1e-5)
         AD = torch.abs(torch.matmul(AC, n.transpose(0, -1)))
         AC = torch.norm(AC, dim=3)
         res = torch.sqrt(AC ** 2. - AD ** 2.) - self.cylinder[6]
@@ -97,9 +97,9 @@ pdf = torch.tensor(pdf).repeat([2,1,1,1]).float()
 class ResBlock(nn.Module):
     def __init__(self, ResLayer):
         super(ResBlock,self).__init__()
-        self.plane_layer_1 = ResLayer
-        self.plane_layer_2 = ResLayer
-        self.plane_layer_3 = ResLayer
+        self.res_layer_1 = ResLayer
+        self.res_layer_2 = ResLayer
+        self.res_layer_3 = ResLayer
 
         # Layer 2
         self.conv1 = nn.Conv2d(3, 64, kernel_size=5, stride=1, padding=2)
@@ -143,9 +143,9 @@ class ResBlock(nn.Module):
             # self.maxPool3)
 
     def forward(self, image):
-        out1 = self.plane_layer_1(image)
-        out2 = self.plane_layer_2(image)
-        out3 = self.plane_layer_3(image)
+        out1 = self.res_layer_1(image)
+        out2 = self.res_layer_2(image)
+        out3 = self.res_layer_3(image)
         out = torch.cat([out1,out2,out3],dim=1)
         out = self.layer1(out)
         out = self.layer2(out)
@@ -162,7 +162,7 @@ class ResidualNet(nn.Module):
         super(ResidualNet,self).__init__()
         self.block1 = ResBlock(PlaneResLayer(batch, width, height))
         self.block2 = ResBlock(SphereResLayer(batch, width, height))
-        self.block3 = ResBlock(SphereResLayer(batch, width, height))
+        self.block3 = ResBlock(CylResLayer(batch, width, height))
 
     def forward(self, image):
         out1 = self.block1(image)
@@ -198,3 +198,18 @@ def Resception(num_classes= 55):
     model.features = nn.Sequential(*residualNet)
     model.last_linear = nn.Linear(1536, num_classes)
     return model
+
+class WeightClipper(object):
+
+    def __init__(self, frequency=1):
+        self.frequency = frequency
+
+    def __call__(self, module):
+        # filter the variables to get the ones you want
+        if hasattr(module, 'sphere'):
+            w2 = module.sphere.data[0:4].clamp(0,1)
+            #torch.clamp(module.sphere.data[0:4],0,1)
+            module.sphere.data[0:4] = w2
+        if hasattr(module, 'cylinder'):
+            w2 = module.cylinder.data[0:4].clamp(0, 1)
+            module.cylinder.data[0:4] = w2
