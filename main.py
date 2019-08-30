@@ -12,6 +12,7 @@ from torch.optim import lr_scheduler
 import matplotlib.pyplot as plt
 from torch.utils.data.dataset import Dataset
 from DrawDataset import MyDataset
+from DrawDataset import MyTransform
 from model import PCRN
 from model import WeightClipper
 #from torch.utils.tensorboard import SummaryWriter
@@ -30,18 +31,12 @@ batch_size = 4*DEVICE_ID.split(",").__len__()
 print("Using a batch size of :", batch_size)
 
 learning_rate = 0.001
-trainingRatio = 0.7
+validationRatio = 0.3
 validationTestRatio = 0.5
 
 # train data
-class MyTransform(object):
-    def __call__(self,tensor):
-        tensor = torch.abs(tensor-1)
-        return tensor[0,:,:].unsqueeze(0)
-
 transformations = transforms.Compose([transforms.ToTensor(),
                                       MyTransform()])
-
 print("Creating Dataset")
 #dataset = MyDataset('/media/SSD/DATA/alex/ShapeNetCoreV2 - Depth/', transform= transformations)
 
@@ -50,10 +45,10 @@ dataset = MyDataset('C:/aldupd/RMIT/PCRN/dataset/ShapeNetCoreV2 - Depth', transf
 # sending to loader
 torch.manual_seed(0)
 indices = torch.randperm(len(dataset))
-train_indices = indices[:len(indices) - int((trainingRatio) * len(dataset))]
+train_indices = indices[:len(indices) - int((validationRatio) * len(dataset))]
 train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_indices)
 
-valid_train_indices = indices[len(indices) - int(trainingRatio * len(dataset)):]
+valid_train_indices = indices[len(indices) - int(validationRatio * len(dataset)):]
 valid_indices = valid_train_indices[:len(valid_train_indices) - int((validationTestRatio) * len(valid_train_indices))]
 valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(valid_indices)
 

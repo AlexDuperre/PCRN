@@ -1,3 +1,4 @@
+import torch
 from torch.utils.data import Dataset
 from PIL import Image
 import os
@@ -15,7 +16,7 @@ class MyDataset(Dataset):
         self.transform = transform
 
     def __getitem__(self, idx):
-        label = self.data_files[idx].replace('\\','/').split('/')[6]
+        label = self.data_files[idx].replace('\\','/').split('/')[-5]
         label = categories.index(label)
         image = Image.open(self.data_files[idx])
         if self.transform:
@@ -24,3 +25,8 @@ class MyDataset(Dataset):
 
     def __len__(self):
         return len(self.data_files)
+
+class MyTransform(object):
+    def __call__(self,tensor):
+        tensor = torch.abs(tensor-1)
+        return tensor[0,:,:].unsqueeze(0)
