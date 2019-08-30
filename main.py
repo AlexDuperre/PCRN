@@ -19,7 +19,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = DEVICE_ID
 
 
 # Hyper parameters
-num_epochs = 5
+num_epochs = 10
 num_classes = 55
 batch_size = 6*DEVICE_ID.split(",").__len__()
 
@@ -70,7 +70,7 @@ model = model.cuda()
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.1)
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=6, gamma=0.1)
 
 ##### Train the model #####
 print("Training started")
