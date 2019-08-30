@@ -53,7 +53,7 @@ class PolyLayer(nn.Module):
         self.degree = degree
         self.split = split
 
-        self.conv = SplitCNN(split= self.split)
+        self.conv = SplitCNN(split= self.split,kernel=1)
 
 
     def forward(self, channels):

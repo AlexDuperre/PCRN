@@ -15,7 +15,7 @@ class MyDataset(Dataset):
         self.transform = transform
 
     def __getitem__(self, idx):
-        label = self.data_files[idx].replace('\\','/').split('/')[6]
+        label = self.data_files[idx].replace('\\','/').split('/')[-5]
         label = categories.index(label)
         image = Image.open(self.data_files[idx])
         if self.transform:

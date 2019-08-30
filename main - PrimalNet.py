@@ -1,4 +1,9 @@
-# from PolynomialChannels import get_polynomial
+import os
+
+# Device configuration
+DEVICE_ID = "5,6,7"
+os.environ["CUDA_VISIBLE_DEVICES"] = DEVICE_ID
+
 import torch
 import torch.nn as nn
 import torchvision
@@ -9,7 +14,6 @@ from torch.utils.data.dataset import Dataset
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
-import os
 from DrawDataset import MyDataset
 from model2 import PrimalNet
 
@@ -17,11 +21,6 @@ import itertools
 from functools import reduce
 
 ###############################################################################################################################
-
-# Device configuration
-DEVICE_ID = "4,5,6"
-os.environ["CUDA_VISIBLE_DEVICES"] = DEVICE_ID
-
 
 # Hyper parameters
 num_epochs = 10
@@ -31,7 +30,8 @@ batch_size = 5*DEVICE_ID.split(",").__len__()
 print("Using a batch size of :", batch_size)
 
 learning_rate = 0.0001
-validationRatio = 0.1
+validationRatio = 0.3
+validationTestRatio = 0.5
 
 # train data
 class MyTransform(object):
@@ -51,18 +51,30 @@ torch.manual_seed(0)
 indices = torch.randperm(len(dataset))
 train_indices = indices[:len(indices) - int((validationRatio) * len(dataset))]
 train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_indices)
-valid_indices = indices[len(indices) - int(validationRatio * len(dataset)):]
+
+valid_train_indices = indices[len(indices) - int(validationRatio * len(dataset)):]
+valid_indices = valid_train_indices[:len(valid_train_indices) - int((validationTestRatio) * len(valid_train_indices))]
 valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(valid_indices)
+
+test_indices = indices[len(valid_train_indices) - int(validationTestRatio * len(valid_train_indices)):]
+test_sampler = torch.utils.data.sampler.SubsetRandomSampler(test_indices)
 
 # Dataset
 train_loader = torch.utils.data.DataLoader(dataset=dataset,
                                            batch_size=batch_size,
                                            sampler = train_sampler,
-                                           shuffle=False)
+                                           shuffle=False,
+                                           num_workers=0)
 valid_loader = torch.utils.data.DataLoader(dataset=dataset,
                                            batch_size=batch_size,
                                            sampler = valid_sampler,
-                                           shuffle=False)
+                                           shuffle=False,
+                                           num_workers=0)
+test_loader = torch.utils.data.DataLoader(dataset=dataset,
+                                           batch_size=batch_size,
+                                           sampler = test_sampler,
+                                           shuffle=False,
+                                           num_workers=0)
 
 
 
@@ -145,11 +157,39 @@ for epoch in range(num_epochs):
                     misclassified[labels[i]] += 1
 
         acc = 100 * correct / total
-        print('Test Accuracy : {} %, Loss : {:.4f}'.format(100 * correct / total, meanLoss / len(valid_loader)))
+        print('Validation Accuracy : {} %, Loss : {:.4f}'.format(100 * correct / total, meanLoss / len(valid_loader)))
         validLoss.append(meanLoss / len(valid_loader))
         validAcc.append(acc)
         misclassified /= (total - correct)
         # print(misclassified*100)
+
+print("Running on testset")
+with torch.no_grad():
+    correct = 0
+    total = 0
+    meanLoss = 0
+    for images, labels in test_loader:
+        images = images.cuda()
+        labels = labels.cuda()
+
+        # Mesh
+        xv, yv = torch.meshgrid((torch.linspace(0, 1, steps=600), torch.linspace(1, 0, steps=600)))
+        xv = xv.reshape(-1).cuda()
+        yv = yv.reshape(-1).cuda()
+
+        batch, channel, height, width = images.shape
+        images = images.reshape(batch, 1, -1)
+        images = torch.stack([xv.repeat(batch, 1, 1), yv.repeat(batch, 1, 1), images]).permute([1, 2, 3, 0]).cuda()
+
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        meanLoss += loss.cpu().detach().numpy()
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+    print('Test Accuracy : {} %, Loss : {:.4f}'.format(100 * correct / total, meanLoss / len(test_loader)))
+
 torch.save(model.state_dict(), 'model.ckpt')
 
 x = np.linspace(0,num_epochs,num_epochs)
