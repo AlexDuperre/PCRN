@@ -66,12 +66,12 @@ train_loader = torch.utils.data.DataLoader(dataset=dataset,
                                            shuffle=False,
                                            num_workers=0)
 valid_loader = torch.utils.data.DataLoader(dataset=dataset,
-                                           batch_size=batch_size,
+                                           batch_size=batch_size*10,
                                            sampler = valid_sampler,
                                            shuffle=False,
                                            num_workers=0)
 test_loader = torch.utils.data.DataLoader(dataset=dataset,
-                                           batch_size=batch_size,
+                                           batch_size=batch_size*10,
                                            sampler = test_sampler,
                                            shuffle=False,
                                            num_workers=0)
@@ -172,14 +172,13 @@ with torch.no_grad():
         images = images.cuda()
         labels = labels.cuda()
 
-        # Mesh
+        #Mesh
         xv, yv = torch.meshgrid((torch.linspace(0, 1, steps=600), torch.linspace(1, 0, steps=600)))
-        xv = xv.reshape(-1).cuda()
-        yv = yv.reshape(-1).cuda()
+        xv = xv.cuda()
+        yv = yv.cuda()
 
         batch, channel, height, width = images.shape
-        images = images.reshape(batch, 1, -1)
-        images = torch.stack([xv.repeat(batch, 1, 1), yv.repeat(batch, 1, 1), images]).permute([1, 2, 3, 0]).cuda()
+        images = [xv.repeat(batch, 1, 1, 1), yv.repeat(batch, 1, 1, 1), images]
 
         outputs = model(images)
         loss = criterion(outputs, labels)
