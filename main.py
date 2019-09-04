@@ -1,7 +1,7 @@
 import os
 
 # Device configuration
-DEVICE_ID = "0"
+DEVICE_ID = "5,6,7"
 os.environ["CUDA_VISIBLE_DEVICES"] = DEVICE_ID
 
 import numpy as np
@@ -15,6 +15,8 @@ from DrawDataset import MyDataset
 from DrawDataset import MyTransform
 from model import PCRN
 from model import WeightClipper
+from sklearn.metrics import confusion_matrix
+from Utils import plot_confusion_matrix
 #from torch.utils.tensorboard import SummaryWriter
 
 ###############################################################################################################################
@@ -26,11 +28,11 @@ from model import WeightClipper
 # Hyper parameters
 num_epochs = 10
 num_classes = 55
-batch_size = 4*DEVICE_ID.split(",").__len__()
+batch_size = 8*DEVICE_ID.split(",").__len__()
 
 print("Using a batch size of :", batch_size)
 
-learning_rate = 0.001
+learning_rate = 0.0001
 validationRatio = 0.3
 validationTestRatio = 0.5
 
@@ -38,9 +40,9 @@ validationTestRatio = 0.5
 transformations = transforms.Compose([transforms.ToTensor(),
                                       MyTransform()])
 print("Creating Dataset")
-#dataset = MyDataset('/media/SSD/DATA/alex/ShapeNetCoreV2 - Depth/', transform= transformations)
+dataset = MyDataset('/media/SSD/DATA/alex/ShapeNetCoreV2 - Depth/', transform= transformations)
 
-dataset = MyDataset('C:/aldupd/RMIT/PCRN/dataset/ShapeNetCoreV2 - Depth', transform= transformations)
+#dataset = MyDataset('C:/aldupd/RMIT/PCRN/dataset/ShapeNetCoreV2 - Depth', transform= transformations)
 
 # sending to loader
 torch.manual_seed(0)
@@ -52,7 +54,7 @@ valid_train_indices = indices[len(indices) - int(validationRatio * len(dataset))
 valid_indices = valid_train_indices[:len(valid_train_indices) - int((validationTestRatio) * len(valid_train_indices))]
 valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(valid_indices)
 
-test_indices = indices[len(valid_train_indices) - int(validationTestRatio * len(valid_train_indices)):]
+test_indices = valid_train_indices[len(valid_train_indices) - int(validationTestRatio * len(valid_train_indices)):]
 test_sampler = torch.utils.data.sampler.SubsetRandomSampler(test_indices)
 
 # Dataset
@@ -62,12 +64,12 @@ train_loader = torch.utils.data.DataLoader(dataset=dataset,
                                            shuffle=False,
                                            num_workers=0)
 valid_loader = torch.utils.data.DataLoader(dataset=dataset,
-                                           batch_size=batch_size,
+                                           batch_size=batch_size*4,
                                            sampler = valid_sampler,
                                            shuffle=False,
                                            num_workers=0)
 test_loader = torch.utils.data.DataLoader(dataset=dataset,
-                                           batch_size=batch_size,
+                                           batch_size=batch_size*4,
                                            sampler = test_sampler,
                                            shuffle=False,
                                            num_workers=0)
@@ -75,7 +77,7 @@ test_loader = torch.utils.data.DataLoader(dataset=dataset,
 
 # Loading model
 model = PCRN(batch_size,600,600) #.to(device)
-model = nn.DataParallel(model,  device_ids=[0])
+model = nn.DataParallel(model,  device_ids=[0,1,2])
 model = model.cuda()
 clipper = WeightClipper()
 
@@ -83,7 +85,7 @@ clipper = WeightClipper()
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.1)
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 ##### Train the model #####
 print("Training started")
@@ -175,10 +177,13 @@ for epoch in range(num_epochs):
         misclassified /= (total - correct)
         # print(misclassified*100)
 
+print("Running on test set")
 with torch.no_grad():
     correct = 0
     total = 0
     meanLoss = 0
+    predictions = np.empty((0,1))
+    ground_truth = np.empty((0,1))
     for images, labels in test_loader:
         images = images.cuda()
         labels = labels.cuda()
@@ -196,6 +201,8 @@ with torch.no_grad():
         loss = criterion(outputs, labels)
         meanLoss += loss.cpu().detach().numpy()
         _, predicted = torch.max(outputs.data, 1)
+        predictions = np.append(predictions,predicted.cpu().detach().numpy())
+        ground_truth = np.append(ground_truth,labels.cpu().detach().numpy())
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
 
@@ -217,3 +224,9 @@ plt.plot(x,validLoss)
 plt.subplot(1,2,2)
 plt.plot(x,validAcc)
 plt.show()
+
+# Plotting confusion matrix
+categories = ['airplane', 'bag', 'basket', 'bathtub', 'bed', 'bench', 'birdhouse', 'bookshelf', 'bottle', 'bowl', 'bus', 'cabinet', 'camera', 'can', 'cap', 'car', 'cellular telephone', 'chair', 'clock', 'computer keyboard', 'dishwasher', 'display', 'earphone', 'faucet', 'file', 'guitar', 'helmet', 'jar', 'knife', 'lamp', 'laptop', 'loudspeaker', 'mailbox', 'microphone', 'microwave', 'motorcycle', 'mug', 'piano', 'pillow', 'pistol', 'pot', 'printer', 'remote control', 'rifle', 'rocket', 'skateboard', 'sofa', 'stove', 'table', 'telephone', 'tower', 'train', 'trashcan', 'vessel', 'washer']
+
+cm = confusion_matrix(ground_truth,predictions)
+plot_confusion_matrix(cm.astype(np.int64), classes=categories)
