@@ -36,15 +36,20 @@ class SplitCNN(nn.Module):
         for i in range(len(split)):
             self.dcnn.append(nn.Conv2d(
                                 in_channels=split[i],
-                                out_channels=self.channels,
+                                out_channels=self.channels*split[i],
                                 kernel_size=self.kernel,
                                 stride=1,
-                                padding=1))
+                                padding=0,
+                                groups=split[i]))
 
     def forward(self, x):
-        # x = x.split(self.split,1)
-        x = [self.dcnn[j](x[j]) for j in range(len(self.split))]
-        return torch.cat(x,1)
+        out = []
+        for j in range(len(self.split)):
+            split_conv_out = self.dcnn[j](x[j])
+            b, c, h, w = split_conv_out.shape
+            out.append(split_conv_out.reshape(b, c//3, 3, h, w).sum(1))
+
+        return torch.cat(out,1)
 
 
 class PolyLayer(nn.Module):
