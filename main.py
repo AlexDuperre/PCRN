@@ -50,14 +50,14 @@ dataset = MyDataset('C:/aldupd/RMIT/PCRN/dataset/ShapeNetCoreV2 - Depth', transf
 # sending to loader
 torch.manual_seed(0)
 indices = torch.randperm(len(dataset))
-train_indices = indices[:len(indices) - int((trainingRatio) * len(dataset))]
+train_indices = indices[:len(indices) - int((validationRatio) * len(dataset))]
 train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_indices)
 
-valid_train_indices = indices[len(indices) - int(trainingRatio * len(dataset)):]
+valid_train_indices = indices[len(indices) - int(validationRatio * len(dataset)):]
 valid_indices = valid_train_indices[:len(valid_train_indices) - int((validationTestRatio) * len(valid_train_indices))]
 valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(valid_indices)
 
-test_indices = indices[len(valid_train_indices) - int(validationTestRatio * len(valid_train_indices)):]
+test_indices = valid_train_indices[len(valid_train_indices) - int(validationTestRatio * len(valid_train_indices)):]
 test_sampler = torch.utils.data.sampler.SubsetRandomSampler(test_indices)
 
 # Dataset
@@ -72,7 +72,7 @@ valid_loader = torch.utils.data.DataLoader(dataset=dataset,
                                            shuffle=False,
                                            num_workers=0)
 test_loader = torch.utils.data.DataLoader(dataset=dataset,
-                                           batch_size=batch_size,
+                                           batch_size=batch_size*4,
                                            sampler = test_sampler,
                                            shuffle=False,
                                            num_workers=0)
@@ -84,9 +84,9 @@ model = nn.DataParallel(model,  device_ids=[0])
 model = model.cuda()
 clipper = WeightClipper()
 
-# Loss and optimizer
+# Loss and optimizer with adapted learning rate
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam([{'params':model.parameters()}, {'params':model.module.features[0]._parameters, 'lr':0.1}], lr=learning_rate)
 # Decay LR by a factor of 0.1 every 7 epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.1)
 
@@ -179,11 +179,14 @@ for epoch in range(num_epochs):
         validAcc.append(acc)
         misclassified /= (total - correct)
         # print(misclassified*100)
-
+count = 1
+print("Running on test set")
 with torch.no_grad():
     correct = 0
     total = 0
     meanLoss = 0
+    predictions = np.empty((0,1))
+    ground_truth = np.empty((0,1))
     for images, labels in test_loader:
         images = images.cuda()
         labels = labels.cuda()
@@ -201,9 +204,15 @@ with torch.no_grad():
         loss = criterion(outputs, labels)
         meanLoss += loss.cpu().detach().numpy()
         _, predicted = torch.max(outputs.data, 1)
+        # predictions.append(list(predicted.cpu().detach().numpy()))
+        # ground_truth.append(list(labels.cpu().detach().numpy()))
+        predictions = np.append(predictions,predicted.cpu().detach().numpy())
+        ground_truth = np.append(ground_truth,labels.cpu().detach().numpy())
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
-
+        if count == 20:
+            break
+        count += 1
     print('Test Accuracy : {} %, Loss : {:.4f}'.format(100 * correct / total, meanLoss / len(test_loader)))
 
 
@@ -212,13 +221,19 @@ f.close()
 g.close()
 h.close()
 
-torch.save(model.state_dict(), 'model.ckpt')
+# torch.save(model.state_dict(), 'model.ckpt')
+#
+# x = np.linspace(0,num_epochs,num_epochs)
+# plt.subplot(1,2,1)
+# plt.plot(x,trainLoss)
+# plt.plot(x,validLoss)
+#
+# plt.subplot(1,2,2)
+# plt.plot(x,validAcc)
+# plt.show()
 
-x = np.linspace(0,num_epochs,num_epochs)
-plt.subplot(1,2,1)
-plt.plot(x,trainLoss)
-plt.plot(x,validLoss)
+# Plotting confusion matrix
+categories = ['airplane', 'bag', 'basket', 'bathtub', 'bed', 'bench', 'birdhouse', 'bookshelf', 'bottle', 'bowl', 'bus', 'cabinet', 'camera', 'can', 'cap', 'car', 'cellular telephone', 'chair', 'clock', 'computer keyboard', 'dishwasher', 'display', 'earphone', 'faucet', 'file', 'guitar', 'helmet', 'jar', 'knife', 'lamp', 'laptop', 'loudspeaker', 'mailbox', 'microphone', 'microwave', 'motorcycle', 'mug', 'piano', 'pillow', 'pistol', 'pot', 'printer', 'remote control', 'rifle', 'rocket', 'skateboard', 'sofa', 'stove', 'table', 'telephone', 'tower', 'train', 'trashcan', 'vessel', 'washer']
 
-plt.subplot(1,2,2)
-plt.plot(x,validAcc)
-plt.show()
+cm = confusion_matrix(ground_truth,predictions)
+plot_confusion_matrix(cm.astype(np.int64), classes=categories)

@@ -24,7 +24,7 @@ pdf = rv.pdf(pos)
 
 # Create cylinder : 7 params
 cylinder = np.array((0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12)) #restrict pylinder[0:3] to be between 0 and 1
-
+cylinder = np.array((0.74997836, 0.19815642, 0.10108314, 0.0, 0.20019574, 0.6006052, 0.120704554))
 ## Find plane intersection for plotting
 #  Normals n and points v0 for each plane
 
@@ -35,8 +35,9 @@ cyl_points = []
 for n, v in zip(n_s,v_s):
     v = np.array(v)
     n = np.array(n)
-    s = np.dot(n,v-cylinder[0:3])/np.dot(n,cylinder[3:6])
+    s = np.dot(n,v-cylinder[0:3])/(np.dot(n,cylinder[3:6]+ 0.00000001))
     pt = cylinder[0:3] + s*cylinder[3:6]
+    pt[np.abs(pt) < 0.0001] = 0 # ensures small values to become zero
     print(s,pt)
     if (np.max(pt)<=1) & (np.min(pt)>=0):
         cyl_points.append(pt)
