@@ -81,9 +81,9 @@ model = nn.DataParallel(model,  device_ids=[0,1,2])
 model = model.cuda()
 clipper = WeightClipper()
 
-# Loss and optimizer
+# Loss and optimizer and adapted lr for ResidualNet
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam([{'params':model.parameters()}, {'params':model.module.features[0]._parameters, 'lr':0.1}], lr=learning_rate)
 # Decay LR by a factor of 0.1 every 7 epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
