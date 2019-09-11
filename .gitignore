@@ -1,0 +1,8 @@
+
+*.png
+
+.idea/*
+
+Shape evolution/
+
+performances/
