@@ -50,13 +50,9 @@ if DATASET == 0:
     #dataset = MyDataset('/media/SSD/DATA/alex/ShapeNetCoreV2 - Depth/', transform= transformations)
     dataset = MyDataset('C:/aldupd/RMIT/PCRN/dataset/ShapeNetCoreV2 - Depth', transform= transformations)
 
-    categories = ['airplane', 'bag', 'basket', 'bathtub', 'bed', 'bench', 'birdhouse', 'bookshelf', 'bottle', 'bowl',
-                  'bus', 'cabinet', 'camera', 'can', 'cap', 'car', 'cellular telephone', 'chair', 'clock',
-                  'computer keyboard', 'dishwasher', 'display', 'earphone', 'faucet', 'file', 'guitar', 'helmet', 'jar',
-                  'knife', 'lamp', 'laptop', 'loudspeaker', 'mailbox', 'microphone', 'microwave', 'motorcycle', 'mug',
-                  'piano', 'pillow', 'pistol', 'pot', 'printer', 'remote control', 'rifle', 'rocket', 'skateboard',
-                  'sofa', 'stove', 'table', 'telephone', 'tower', 'train', 'trashcan', 'vessel', 'washer']
-
+    categories = dataset.categories
+    NumClasses= 55
+    
     # sending to loader
     # torch.manual_seed(0)
     indices = torch.randperm(len(dataset))
@@ -93,25 +89,36 @@ if DATASET == 1:
     trainset = ModelNet40Dataset('/media/SSD/DATA/alex/ModelNet40 - Depth/', transform=transformations)
     testset = ModelNet40Dataset('/media/SSD/DATA/alex/ModelNet40 - Depth/', data_type='test', transform= transformations)
 
-    categories = ['airplane', 'bathtub', 'bed', 'bench', 'bookshelf', 'bottle', 'bowl', 'car', 'chair', 'cone', 'cup',
-                  'curtain', 'desk', 'door', 'dresser', 'flower_pot', 'glass_box', 'guitar', 'keyboard', 'lamp',
-                  'laptop', 'mantel', 'monitor', 'night_stand', 'person', 'piano', 'plant', 'radio', 'range_hood',
-                  'sink', 'sofa', 'stairs', 'stool', 'table', 'tent', 'toilet', 'tv_stand', 'vase', 'wardrobe', 'xbox']
+    categories = trainset.categories
+    NumClasses = 40
 
     # sending to loader
+    indices = torch.randperm(len(trainset))
+    train_indices = indices[:len(indices) - int((validationRatio) * len(trainset))]
+    train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_indices)
+
+    valid_indices = indices[len(indices) - int((validationRatio) * len(trainset)):]
+    valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(valid_indices)
+
     train_loader = torch.utils.data.DataLoader(dataset=trainset,
                                                batch_size=batch_size,
-                                               shuffle=True,
+                                               sampler=train_sampler,
+                                               shuffle=False,
                                                num_workers=0)
-    valid_loader = torch.utils.data.DataLoader(dataset=testset,
+    valid_loader = torch.utils.data.DataLoader(dataset=trainset,
                                                batch_size=batch_size * 5,
-                                               shuffle=True,
+                                               sampler=valid_sampler,
+                                               shuffle=False,
                                                num_workers=0)
+    test_loader = torch.utils.data.DataLoader(dataset=testset,
+                                              batch_size=batch_size * 5,
+                                              shuffle=False,
+                                              num_workers=0)
 
 
 
 # Loading model
-model = PCRN(batch_size,600,600) #.to(device)
+model = PCRN(batch_size,600,600, num_classes=NumClasses)
 model = nn.DataParallel(model,  device_ids=[0])
 model = model.cuda()
 clipper = WeightClipper()
@@ -187,8 +194,6 @@ for epoch in range(num_epochs):
         correct = 0
         total = 0
         meanLoss = 0
-        predictions = np.empty((0, 1))
-        ground_truth = np.empty((0, 1))
         for images, labels in valid_loader:
             images = images.cuda()
             labels = labels.cuda()
@@ -206,8 +211,6 @@ for epoch in range(num_epochs):
             loss = criterion(outputs, labels)
             meanLoss += loss.cpu().detach().numpy()
             _, predicted = torch.max(outputs.data, 1)
-            predictions = np.append(predictions, predicted.cpu().detach().numpy())
-            ground_truth = np.append(ground_truth, labels.cpu().detach().numpy())
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
@@ -217,36 +220,36 @@ for epoch in range(num_epochs):
         validLoss.append(meanLoss / len(valid_loader))
         validAcc.append(acc)
 
-if DATASET == 0:
-    print("Running on test set")
-    with torch.no_grad():
-        correct = 0
-        total = 0
-        meanLoss = 0
-        predictions = np.empty((0,1))
-        ground_truth = np.empty((0,1))
-        for images, labels in test_loader:
-            images = images.cuda()
-            labels = labels.cuda()
 
-            # Mesh
-            xv, yv = torch.meshgrid((torch.linspace(0, 1, steps=600), torch.linspace(1, 0, steps=600)))
-            xv = xv.reshape(-1).cuda()
-            yv = yv.reshape(-1).cuda()
+print("Running on test set")
+with torch.no_grad():
+    correct = 0
+    total = 0
+    meanLoss = 0
+    predictions = np.empty((0,1))
+    ground_truth = np.empty((0,1))
+    for images, labels in test_loader:
+        images = images.cuda()
+        labels = labels.cuda()
 
-            batch, channel, height, width = images.shape
-            images = images.reshape(batch, 1, -1)
-            images = torch.stack([xv.repeat(batch, 1, 1), yv.repeat(batch, 1, 1), images]).permute([1, 2, 3, 0]).cuda()
+        # Mesh
+        xv, yv = torch.meshgrid((torch.linspace(0, 1, steps=600), torch.linspace(1, 0, steps=600)))
+        xv = xv.reshape(-1).cuda()
+        yv = yv.reshape(-1).cuda()
 
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            meanLoss += loss.cpu().detach().numpy()
-            _, predicted = torch.max(outputs.data, 1)
-            predictions = np.append(predictions,predicted.cpu().detach().numpy())
-            ground_truth = np.append(ground_truth,labels.cpu().detach().numpy())
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-        print('Test Accuracy : {} %, Loss : {:.4f}'.format(100 * correct / total, meanLoss / len(test_loader)))
+        batch, channel, height, width = images.shape
+        images = images.reshape(batch, 1, -1)
+        images = torch.stack([xv.repeat(batch, 1, 1), yv.repeat(batch, 1, 1), images]).permute([1, 2, 3, 0]).cuda()
+
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        meanLoss += loss.cpu().detach().numpy()
+        _, predicted = torch.max(outputs.data, 1)
+        predictions = np.append(predictions,predicted.cpu().detach().numpy())
+        ground_truth = np.append(ground_truth,labels.cpu().detach().numpy())
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+    print('Test Accuracy : {} %, Loss : {:.4f}'.format(100 * correct / total, meanLoss / len(test_loader)))
 
 
 # Close files
