@@ -44,13 +44,14 @@ def CyGrid(params):
     v_s = [[0, 0.5, 0.5], [1, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 1, 0.5], [0.5, 0.5, 0], [0.5, 0.5, 1]]
 
     eps1 = 0.0000001
-    eps2 = 0.0001
+    eps2 = 0.001
     cyl_points = []
     for n, v in zip(n_s, v_s):
         v = np.array(v)
         n = np.array(n)
         s = np.dot(n, v - params[0:3]) / (np.dot(n, params[3:6])+eps1)
         pt = params[0:3] + s * params[3:6]
+        pt = np.round(pt,decimals=3)
         pt[np.abs(pt) < eps2] = 0  # ensures small values to become zero
         if (np.max(pt) <= 1) & (np.min(pt) >= 0):
             cyl_points.append(pt)
@@ -63,6 +64,7 @@ def CyGrid(params):
 
     if len(cyl_points) < 2:
         print('ERROR: Less that 2 intersection points with unit cube')
+        cyl_points.append(params[0:3] + 1 * params[3:6]) # ADD random point
 
     # plot Cylinder
     # vector in direction of axis
@@ -94,9 +96,9 @@ def CyGrid(params):
 
 ########## main ###########
 def main():
-    plane_file = "./Shape evolution/planes.txt"
-    sphere_file = "./Shape evolution/spheres.txt"
-    cyl_file = "./Shape evolution/cyl.txt"
+    plane_file = "../Shape evolution/planes.txt"
+    sphere_file = "../Shape evolution/spheres.txt"
+    cyl_file = "../Shape evolution/cyl.txt"
 
     length = file_len(plane_file)
 
@@ -111,8 +113,6 @@ def main():
     cyls = []
     j = 0
     for i in range(length):
-        j += 1
-        print(j)
         # Shape params at iteraion X
         plane = f.readline()[1:-2]
         plane = np.fromstring(plane, sep=', ')
@@ -126,7 +126,7 @@ def main():
         cyl = np.fromstring(cyl, sep=', ')
         cyls.append(cyl)
 
-    for i in range(0,length,100):
+    for i in range(0,length,1):
         # Computing z coordinates
         x_plane, y_plane, z_plane = PlaneGrid(planes[i])
         x_sphere, y_sphere, z_sphere = ShpereGrid(spheres[i])
@@ -137,7 +137,7 @@ def main():
         ax.plot_surface(x_plane, y_plane, z_plane, cmap='viridis', linewidth=0)
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-        ax.set_zlim(-0.5, 1)
+        ax.set_zlim(-1, 0.5)
         ax = fig.add_subplot(312, projection='3d')
         ax.plot_surface(x_sphere, y_sphere, z_sphere, cmap='viridis', linewidth=0)
         ax.set_xlim(0, 1)
@@ -148,7 +148,7 @@ def main():
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.set_zlim(0, 1)
-        plt.pause(0.00001)
+        plt.pause(0.0001)
         #plt.show()
 
         # Save figure to array
@@ -158,7 +158,7 @@ def main():
         gif.append(data)
 
 
-    imageio.mimsave("./evolution.gif", gif)
+    imageio.mimsave("../evolution.gif", gif)
 
 
 

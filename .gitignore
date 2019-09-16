@@ -3,6 +3,8 @@
 
 .idea/*
 
-Shape evolution/
+__pycache__/*
 
-performances/
+Shape evolution/*
+
+performances/*

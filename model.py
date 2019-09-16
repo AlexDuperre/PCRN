@@ -232,7 +232,7 @@ from Inception4 import inceptionv4
 class PlaneResLayer(nn.Module):
     def __init__(self,batch, width, height):
         super(PlaneResLayer,self).__init__()
-        self.plane = Parameter(torch.tensor([0.5,0.5,0.5,0.5]), requires_grad=True)
+        self.plane = Parameter(torch.rand(4), requires_grad=True)
         self.batch = batch
         self.width = width
         self.height = height
@@ -246,7 +246,7 @@ class PlaneResLayer(nn.Module):
 class SphereResLayer(nn.Module):
     def __init__(self,batch, width, height):
         super(SphereResLayer,self).__init__()
-        self.sphere = Parameter(torch.tensor([0.5,0.5,0.5,0.25]),requires_grad=True)
+        self.sphere = Parameter(torch.rand(4),requires_grad=True)
         self.batch = batch
         self.width = width
         self.height = height
@@ -261,7 +261,7 @@ class SphereResLayer(nn.Module):
 class CylResLayer(nn.Module):
     def __init__(self,batch, width, height):
         super(CylResLayer,self).__init__()
-        self.cylinder = Parameter(torch.tensor([0.75, 0.2, 0.1,-0.55,0.2, 0.6, 0.12]), requires_grad=True)
+        self.cylinder = Parameter(torch.cat([torch.rand(3),torch.rand(3)*-1+torch.rand(3),torch.rand(1)*0.5]), requires_grad=True)
         self.batch = batch
         self.width = width
         self.height = height
@@ -438,9 +438,8 @@ class WeightClipper(object):
     def __call__(self, module):
         # filter the variables to get the ones you want
         if hasattr(module, 'sphere'):
-            w2 = module.sphere.data[0:4].clamp(0,1)
-            #torch.clamp(module.sphere.data[0:4],0,1)
-            module.sphere.data[0:4] = w2
+            w2 = module.sphere.data[0:3].clamp(0,1)
+            module.sphere.data[0:3] = w2
         if hasattr(module, 'cylinder'):
-            w2 = module.cylinder.data[0:4].clamp(0, 1)
-            module.cylinder.data[0:4] = w2
+            w2 = module.cylinder.data[0:3].clamp(0, 1)
+            module.cylinder.data[0:3] = w2
