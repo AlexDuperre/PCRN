@@ -36,7 +36,6 @@ ax = fig.add_subplot(111, projection='3d')
 ax.plot_surface(X, Y, pdf, cmap='viridis', linewidth=0)
 
 ax.plot_surface(x, y, z)
-
 ax.set_xlabel('X axis')
 ax.set_ylabel('Y axis')
 ax.set_zlabel('Z axis')
@@ -59,6 +58,6 @@ cb = plt.colorbar()
 # cb.set_label('mean value')
 plt.show()
 
-data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+# data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+# data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 # print(data)

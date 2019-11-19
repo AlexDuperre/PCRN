@@ -34,13 +34,14 @@ class SplitCNN(nn.Module):
 
         self.dcnn = nn.ModuleList()
         for i in range(len(split)):
-            self.dcnn.append(nn.Conv2d(
+            self.dcnn.append(nn.utils.weight_norm(nn.Conv2d(
                                 in_channels=split[i],
                                 out_channels=self.channels*split[i],
                                 kernel_size=self.kernel,
                                 stride=1,
                                 padding=0,
-                                groups=split[i]))
+                                groups=split[i]),
+                                name='weight'))
 
     def forward(self, x):
         out = []
@@ -57,13 +58,16 @@ class PolyLayer(nn.Module):
         super(PolyLayer,self).__init__()
         self.degree = degree
         self.split = split
-
         self.conv = SplitCNN(split= self.split,kernel=1)
+        self.batch_norm = nn.BatchNorm2d(3*len(split))
+        self.activ = nn.Tanh()
 
 
     def forward(self, channels):
         input = get_Input(channels, self.degree)
         out = self.conv(input)
+        out = self.batch_norm(out)
+        out = self.activ(out)
         return out
 
 def PrimalNet(degree, split, num_classes= 55):
@@ -79,5 +83,5 @@ def PrimalNet(degree, split, num_classes= 55):
     PolyConv = [PolyLayer(degree, split)]
     PolyConv.extend(list(model.features))
     model.features = nn.Sequential(*PolyConv)
-    model.last_linear = nn.Linear(346112, num_classes)
+    model.last_linear = nn.Linear(2048, num_classes)
     return model

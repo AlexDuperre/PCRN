@@ -8,3 +8,7 @@
 .idea/
 
 __pycache__/
+
+performances/
+Shape evolution/
+*.ckpt
