@@ -96,9 +96,9 @@ def CyGrid(params):
 
 ########## main ###########
 def main():
-    plane_file = "../Shape evolution/planes.txt"
-    sphere_file = "../Shape evolution/spheres.txt"
-    cyl_file = "../Shape evolution/cyl.txt"
+    plane_file = "../performances/PCRN/ModelNet40/20191108-213210/planes.txt"
+    sphere_file = "../performances/PCRN/ModelNet40/20191108-213210/spheres.txt"
+    cyl_file = "../performances/PCRN/ModelNet40/20191108-213210/cyl.txt"
 
     length = file_len(plane_file)
 
@@ -126,7 +126,7 @@ def main():
         cyl = np.fromstring(cyl, sep=', ')
         cyls.append(cyl)
 
-    for i in range(0,length,1):
+    for i in range(0,length,100):
         # Computing z coordinates
         x_plane, y_plane, z_plane = PlaneGrid(planes[i])
         x_sphere, y_sphere, z_sphere = ShpereGrid(spheres[i])

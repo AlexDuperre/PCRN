@@ -1,11 +1,10 @@
 
 *.png
 
-.idea/*
+.idea/
 
 __pycache__/*
 
 Shape evolution/*
 
 performances/*
-.idea/

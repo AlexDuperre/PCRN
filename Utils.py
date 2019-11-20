@@ -5,7 +5,7 @@ import numpy as np
 classes = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 
 
-def plot_confusion_matrix(cm, classes,
+def plot_confusion_matrix(cm, classes, path,
                           normalize=False,
                           title='Confusion matrix',
                           cmap=plt.cm.Blues):
@@ -34,7 +34,8 @@ def plot_confusion_matrix(cm, classes,
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.grid(False)
-    plt.savefig("./confusion_matrix.png")
+    plt.savefig(path + "/confusion_matrix.png")
     plt.show()
+
 
 
