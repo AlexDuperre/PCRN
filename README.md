@@ -48,13 +48,14 @@ The raw datasets contains the depth images with a pixel ranging from 0 to 1, wit
     class MyTransform(object):
 
 This class simply subtracts one to every pixel before applying the absolute value function. We finally reshape the tensor into the right dimensions ([batch, channels, height, width]) using the unsqueeze method.
+
 For the original ModelNet40 dataset, a renderer module has been introduced. The renderer makes use of trimesh, pyrender and the osmesa backend. It loads the .OFF mesh and rotates it randomly within the renderer.py code. It then creates an normalized depth image similar to the one created by the pre-processing procedure above. The image can directly be fed to the algorithm afterwards.
 
 ## Models
 
 ### PCRN
 
-The first model designed is based on Pr. Reza Hoseinnezhad’s idea to use residuals from different 3D shapes. In simpler words, for each point in the input depth image, the shortest distance to the chosen shape is computed and stored in a matrix of the same dimensions as the initial image. In theory, three residual images are required to reproduce the entire shape of the input. In our basic case, we compute three residual images of the input for each basic shape i.e.: plane, sphere, cylinder. It was then necessary to implement a layer for each type of shapes with trainable parameters.
+The first model designed is based on Pr. Reza Hoseinnezhad’s idea to use residuals from different 3D geometric primitives. In simpler words, for each point in the input depth image, the shortest distance to the chosen shape is computed and stored in a matrix of the same dimensions as the initial image. In theory, three residual images are required to produce a rich representation of the input. In our basic case, we compute three residual images of the input for each basic primitive i.e.: plane, sphere, cylinder. It was then necessary to implement a layer for each type of shapes with trainable parameters.
 
 #### PlaneResLayer:
 
@@ -68,12 +69,12 @@ The Residuals are then computed using basic operations form the PyTorch library.
 
 #### SphereResLayer:
 
-The SphereResLayer works the same as the PlaneresLayer except that its parameters have different signification. The parameters a,b,c here represent the center of the sphere while d represents the radius of the sphere. It is then important that we enforce this point to be within the unit cube containing the depth image. The residuals are then computed by calculating the distance of each points to the center of the sphere and by then subtracting the radius d. 
+The SphereResLayer works the same as the PlaneresLayer except that its parameters have different signification. The parameters a,b,c here represent the center of the sphere while d represents the radius of the sphere. It is important that we enforce this point to be within the unit cube containing the depth image. The residuals are computed by calculating the distance of each points to the center of the sphere and by subtracting the radius d. 
 
 
 #### CylResLayer:
 
-The CylResLayer works the same as the other except that it uses more parameters to define the cylinder. The first three parameters, a,b,c represent a point in the unit cube containing the depth image. The three next parameters, d,e,f represent the slope of the 3D line starting from the initial point and the last parameter, g, represents the radius of the cylinder. The residuals are finally computed by calculating the smallest distance of each point to the 3D line and then subtracting the radius g.
+The CylResLayer works the same as the other except that it uses more parameters to define the cylinder. The first three parameters, a,b,c represent a point in the unit cube containing the depth image. The three next parameters, d,e,f represent the slope of the 3D line starting from the initial point and the last parameter, g, represents the radius of the cylinder. The residuals are computed by calculating the smallest distance of each point to the 3D line and subtracting the radius g.
 
 Every ResLayer ‘s forward method takes as input a tensor of shape [batch_size, height*width,3]. This tensor contains every (x, y, z) point in the image and uses this format to ease the residual calculation. As mentioned before, the output of each ResLayer is a residual image.
 
