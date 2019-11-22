@@ -29,8 +29,8 @@ from Utils import plot_confusion_matrix
 #writer = SummaryWriter()
 
 #  Dataset : ShapeNet = 0, ModelNet = 1:
-DATASET = 0
-pretrained = False
+DATASET = 1
+pretrained = True
 
 
 # Hyper parameters
@@ -40,8 +40,8 @@ ids = range(DEVICE_ID.split(",").__len__())
 imsize = 200
 print("Using a batch size of :", batch_size)
 
-learning_rate = 0.0001
-specific_lr = 0.001
+learning_rate = 0.00001
+specific_lr = 0.0001
 validationRatio = 0.01
 validationTestRatio = 0.5
 
