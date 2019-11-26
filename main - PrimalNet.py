@@ -1,7 +1,7 @@
 import os
 
 # Device configuration
-DEVICE_ID = "2,3"
+DEVICE_ID = "0" #"2,3"
 os.environ["CUDA_VISIBLE_DEVICES"] = DEVICE_ID
 
 import time
@@ -25,7 +25,7 @@ from sklearn.metrics import confusion_matrix
 from Utils import plot_confusion_matrix
 ###############################################################################################################################
 #  Dataset : ShapeNet = 0, ModelNet = 1:
-DATASET = 2
+DATASET = 1
 pretrained = False
 
 
@@ -34,15 +34,15 @@ model_degree = 5
 possible_monomials  = [3, 9, 19, 34, 55]
 monomial_list = possible_monomials[:model_degree-1]
 
-num_epochs = 200
-batch_size = 45*DEVICE_ID.split(",").__len__()
+num_epochs = 20
+batch_size = 35*DEVICE_ID.split(",").__len__()
 ids = range(DEVICE_ID.split(",").__len__())
 imsize = 200
 print("Using a batch size of :", batch_size)
 
 learning_rate = 0.0001
-specific_lr = 0.01
-validationRatio = 0.2
+specific_lr = 0.001
+validationRatio = 0.01
 validationTestRatio = 0.5
 
 
@@ -102,12 +102,15 @@ if DATASET == 1:
     # transformations = transforms.Compose([transforms.ToTensor()])
 
     # ModelNet
-    trainset = ModelNet40Dataset('/media/SSD/DATA/alex/ModelNet40 - Depth/', transform=transformations)
-    #testset = ModelNet40Dataset('/media/SSD/DATA/alex/ModelNet40 - Depth/', data_type='test', transform= transformations)
+    # trainset = ModelNet40Dataset('/media/SSD/DATA/alex/ModelNet40 - Depth/', transform=transformations)
+    # testset = ModelNet40Dataset('/media/SSD/DATA/alex/ModelNet40 - Depth/', data_type='test', transform= transformations)
+
+    trainset = ModelNet40Dataset('C:/aldupd/RMIT/PCRN/dataset/ModelNet40 - Depth/', transform=transformations)
+    testset = ModelNet40Dataset('C:/aldupd/RMIT/PCRN/dataset/ModelNet40 - Depth/', data_type='test', transform=transformations)
 
     #  testset from atomatically rendered .OFF files
-    transformations = transforms.Compose([transforms.ToTensor()])
-    testset = ModelNet40OFFDataset('/media/SSD/DATA/alex/ModelNet40/', data_type='test', transform=transformations)
+    #transformations = transforms.Compose([transforms.ToTensor()])
+    #testset = ModelNet40OFFDataset('/media/SSD/DATA/alex/ModelNet40/', data_type='test', transform=transformations)
 
     categories = trainset.categories
 
@@ -134,7 +137,7 @@ if DATASET == 1:
                                               shuffle=False,
                                               num_workers=0)
 
-    #valid_loader = test_loader
+    valid_loader = test_loader
 
 if DATASET == 2:
     dataset_name = 'ModelNet40OFF'
@@ -204,7 +207,7 @@ optimizer = torch.optim.Adam([{'params':model.module.features[1:-1].parameters()
                               {'params':model.module.features[0].parameters(), 'lr':specific_lr}],
                              lr=learning_rate)
 # Decay LR by a factor of 0.1 every 7 epochs
-step = 150
+step = 9
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=step, gamma=0.01)
 
 ##### Train the model #####
