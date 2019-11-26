@@ -96,9 +96,9 @@ def CyGrid(params):
 
 ########## main ###########
 def main():
-    plane_file = "../performances/PCRN/ModelNet40/20191108-213210/planes.txt"
-    sphere_file = "../performances/PCRN/ModelNet40/20191108-213210/spheres.txt"
-    cyl_file = "../performances/PCRN/ModelNet40/20191108-213210/cyl.txt"
+    plane_file = "../performances/PCRN/ModelNet40/20191121-012224 - pretrained/planes.txt"
+    sphere_file = "../performances/PCRN/ModelNet40/20191121-012224 - pretrained/spheres.txt"
+    cyl_file = "../performances/PCRN/ModelNet40/20191121-012224 - pretrained/cyl.txt"
 
     length = file_len(plane_file)
 

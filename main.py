@@ -1,7 +1,7 @@
 import os
 
 # Device configuration
-DEVICE_ID = "0"#"5,6,7"
+DEVICE_ID = "2,3"#"5,6,7"
 os.environ["CUDA_VISIBLE_DEVICES"] = DEVICE_ID
 
 import time
@@ -29,13 +29,13 @@ from Utils import plot_confusion_matrix
 #writer = SummaryWriter()
 
 #  Dataset : ShapeNet = 0, ModelNet = 1:
-DATASET = 0
+DATASET = 2
 pretrained = False
 
 
 # Hyper parameters
-num_epochs = 15
-batch_size = 24*DEVICE_ID.split(",").__len__()
+num_epochs = 200
+batch_size = 45*DEVICE_ID.split(",").__len__()
 ids = range(DEVICE_ID.split(",").__len__())
 imsize = 200
 print("Using a batch size of :", batch_size)
@@ -133,8 +133,8 @@ if DATASET == 2:
     dataset_name = 'ModelNet40OFF'
     transformations = transforms.Compose([transforms.ToTensor()])
     # ModelNet OFF
-    # root = '/media/SSD/DATA/alex/ModelNet40 - Depth/'
-    root = 'C:/aldupd/RMIT/PCRN/dataset/ModelNet40'
+    root = '/media/SSD/DATA/alex/ModelNet40/'
+    #root = 'C:/aldupd/RMIT/PCRN/dataset/ModelNet40'
     trainset = ModelNet40OFFDataset(root, transform=transformations)
     testset = ModelNet40OFFDataset(root, data_type='test', transform= transformations)
 
@@ -161,7 +161,7 @@ if DATASET == 2:
                                                shuffle=False,
                                                num_workers=0)
     test_loader = torch.utils.data.DataLoader(dataset=testset,
-                                              batch_size=batch_size * 5,
+                                              batch_size=batch_size * 3,
                                               shuffle=False,
                                               num_workers=0)
     valid_loader= test_loader
@@ -197,7 +197,7 @@ optimizer = torch.optim.Adam([{'params':model.module.features[1:-1].parameters()
                              lr=learning_rate)
 
 # Decay LR by a factor of 0.1 every 7 epochs
-step = 6
+step = 180
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=step, gamma=0.1)
 
 ##### Train the model #####

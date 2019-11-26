@@ -1,5 +1,32 @@
 # Description of PCRN code
 
+## Prerequisites
+
+The program runs on Unix operating systems only with the rendering module (for the .OFF dataset). The list of prerequisites is as follow:
+
+- Torchvision 0.4.1 + cu 9.2
+- Pyrender
+- Trimesh
+- pretrainedmodels
+- numpy
+- scipy
+- matplotlib
+- tqdm
+
+- OSMesa, mmatl's fork of PyOpenGL:
+
+    sudo apt update
+
+    sudo wget https://github.com/mmatl/travis_debs/raw/master/xenial/mesa_18.3.3-0.deb
+
+    sudo dpkg -i ./mesa_18.3.3-0.deb || true
+    sudo apt install -f
+
+Then:
+
+    git clone https://github.com/mmatl/pyopengl.git
+    pip install ./pyopengl
+	
 ## Datasets
 The fist dataset used to train PCRN is the modified ShapeNet Core V2. This dataset initially contains 55 different types of objects in the form of 3D models (.obj). Our algorithm is designed to be used with a depth camera producing a grid-like output like an image containing depth information for each pixel. In order to be able to use the ShapeNet dataset with our algorithm, it was mandatory to generate the aforementioned type of data from the original dataset. Thanks to Panamari’s code Stanford Shapenet Renderer, we were able generate, after minor modifications, a usable dataset for our PCRN algorithm. The generated dataset now constitutes of 55 labelled folders containing 6 different depth views of each objects. In total the dataset contains near 250 000 depth images.
 
@@ -48,13 +75,14 @@ The raw datasets contains the depth images with a pixel ranging from 0 to 1, wit
     class MyTransform(object):
 
 This class simply subtracts one to every pixel before applying the absolute value function. We finally reshape the tensor into the right dimensions ([batch, channels, height, width]) using the unsqueeze method.
+
 For the original ModelNet40 dataset, a renderer module has been introduced. The renderer makes use of trimesh, pyrender and the osmesa backend. It loads the .OFF mesh and rotates it randomly within the renderer.py code. It then creates an normalized depth image similar to the one created by the pre-processing procedure above. The image can directly be fed to the algorithm afterwards.
 
 ## Models
 
 ### PCRN
 
-The first model designed is based on Pr. Reza Hoseinnezhad’s idea to use residuals from different 3D shapes. In simpler words, for each point in the input depth image, the shortest distance to the chosen shape is computed and stored in a matrix of the same dimensions as the initial image. In theory, three residual images are required to reproduce the entire shape of the input. In our basic case, we compute three residual images of the input for each basic shape i.e.: plane, sphere, cylinder. It was then necessary to implement a layer for each type of shapes with trainable parameters.
+The first model designed is based on Pr. Reza Hoseinnezhad’s idea to use residuals from different 3D geometric primitives. In simpler words, for each point in the input depth image, the shortest distance to the chosen shape is computed and stored in a matrix of the same dimensions as the initial image. In theory, three residual images are required to produce a rich representation of the input. In our basic case, we compute three residual images of the input for each basic primitive i.e.: plane, sphere, cylinder. It was then necessary to implement a layer for each type of shapes with trainable parameters.
 
 #### PlaneResLayer:
 
@@ -68,20 +96,20 @@ The Residuals are then computed using basic operations form the PyTorch library.
 
 #### SphereResLayer:
 
-The SphereResLayer works the same as the PlaneresLayer except that its parameters have different signification. The parameters a,b,c here represent the center of the sphere while d represents the radius of the sphere. It is then important that we enforce this point to be within the unit cube containing the depth image. The residuals are then computed by calculating the distance of each points to the center of the sphere and by then subtracting the radius d. 
+The SphereResLayer works the same as the PlaneresLayer except that its parameters have different signification. The parameters a,b,c here represent the center of the sphere while d represents the radius of the sphere. It is important that we enforce this point to be within the unit cube containing the depth image. The residuals are computed by calculating the distance of each points to the center of the sphere and by subtracting the radius d. 
 
 
 #### CylResLayer:
 
-The CylResLayer works the same as the other except that it uses more parameters to define the cylinder. The first three parameters, a,b,c represent a point in the unit cube containing the depth image. The three next parameters, d,e,f represent the slope of the 3D line starting from the initial point and the last parameter, g, represents the radius of the cylinder. The residuals are finally computed by calculating the smallest distance of each point to the 3D line and then subtracting the radius g.
+The CylResLayer works the same as the other except that it uses more parameters to define the cylinder. The first three parameters, a,b,c represent a point in the unit cube containing the depth image. The three next parameters, d,e,f represent the slope of the 3D line starting from the initial point and the last parameter, g, represents the radius of the cylinder. The residuals are computed by calculating the smallest distance of each point to the 3D line and subtracting the radius g.
 
 Every ResLayer ‘s forward method takes as input a tensor of shape [batch_size, height*width,3]. This tensor contains every (x, y, z) point in the image and uses this format to ease the residual calculation. As mentioned before, the output of each ResLayer is a residual image.
 
-Then, three ResLayers of the same kind are called within a ResBlock. The ResBlock concatenate the outputs of the three ResLayers along the channel dimension and passes the result to a small ConvNet which further process the residuals. It has been found that the best activation for this ConvNet block is the tanh function. The output of the ResBlock is a feature map containing 16 channels.
+Three ResLayers of the same kind are called within a ResBlock. The ResBlock concatenate the outputs of the three ResLayers along the channel dimension and passes the result to a small ConvNet which further process the residuals. It has been found that the best activation for this ConvNet block is the tanh function. The output of the ResBlock is a feature map containing 16 channels.
 
-When building the first part of the PCRN algorithm, the ResidualNet, a ResBlock is initialized for each type of shapes (plane,sphere,cylinder). In the forward pass, each of the ResBlock outputs tensor of the following shape [batch_size, 16, height, width]. These tensors are again concatenated along the channel dimension, resulting in a tensor of shape [batch_size, 48, height, width].
+When building the first part of the PCRN algorithm, the ResidualNet, a ResBlock is initialized for each type of primitives (plane,sphere,cylinder). In the forward pass, each of the ResBlock outputs tensor of the following shape [batch_size, 16, height, width]. These tensors are again concatenated along the channel dimension, resulting in a tensor of shape [batch_size, 48, height, width].
 
-The result of ResidualNet is then feed to the popular ResNext101-32x4d. The ResNext101-32x4d network must firstly be modified to receive the 48 channel images as input and output a 55-dimensional vector. The procedure to achieve this is located in the PCRN method. The pretrained ResNext101-32x4d model is initially loaded to make use of the pretrained feature extractor before applying the modifications mentioned above. A visual representation of the model is shown in Figure 1.
+The result of ResidualNet is feed to the popular ResNext101-32x4d. The ResNext101-32x4d network must firstly be modified to receive the 48 channel images as input and output a 55-dimensional vector (for ShapeNet). The procedure to achieve this is located in the PCRN method. The pretrained ResNext101-32x4d model is initially loaded to make use of the pretrained feature extractor before applying the modifications mentioned above. A visual representation of the model is shown in Figure 1.
 
 Lastly, another feature is added to the model to make sure that the desired shape’s parameters stay between zero and one (i.e. the center of the sphere stays inside the unit cube).  We define a class object called WeightClipper that contains the following methods:
 
@@ -98,7 +126,7 @@ Figure 1:PCRN model
 ### PrimalNet
 The second model that was implemented is a generalization of the PCRN model. The hypothesis is that the residuals computed with respect to a basic shape is equivalent to apply a 1 x 1 covolution on a representation of the input. Since each shape has its own parametric equation, it was thought that projecting the input into other dimensions by using a variant of the kernel trick would mimic the calculation of the residual. 
 
-The convolution would then act as the shape descriptor by applying its weights on the projected dimensions. In the case that the shape is a plane, a 1 x 1 convolution on three channels (x grid, y grid, z grid) is equivalent to calculating the residual from a plane like in the method above. In the case we augment the number of channels at the input by creating combinations of the initial channels, we will be creating the equivalent of a representation of the input in a higher dimension, which is comparable to try to calculate the residuals with respect to other shapes. This version of the PCRN, called the PrimalNet will then project the input into a predefines number of powers, creating a polynomial form of the input for each power, and each polynomial formed will be processed by a 1 x 1 convolution operation before being passed to our modified ResNext101-32x4d module. See Figure 2 for a visual representation of the model.
+The convolution would then act as the shape descriptor by applying its weights on the projected dimensions. In the case that the shape is a plane, a 1 x 1 convolution on three channels (x grid, y grid, z grid) is equivalent to calculating the residual from a plane like in the method above. In the case we augment the number of channels at the input by creating combinations of the initial channels, we will be creating the equivalent of a representation of the input in a higher dimension, which is comparable to try to calculate the residuals with respect to other primitives. This version of the PCRN, called the PrimalNet will then project the input into a predefines number of powers, creating a polynomial form of the input for each power, and each polynomial formed will be processed by a 1 x 1 convolution operation before being passed to our modified ResNext101-32x4d module. See Figure 2 for a visual representation of the model.
 
 In this specific case, it is desired that every input channel (representing a monomial of a polynomial), is convolved with three different kernels for a certain degree of polynomial d. Then, we will sum over the first feature maps of each channel for that degree of polynomial to obtain the first out of three feature maps for that very specific polynomial. We sum over the seconds and finally the thirds to obtain the two last feature maps for that degree of polynomial. This procedure is obviously repeated over each degree of polynomial, which yields a three channel feature map for each degree.
 

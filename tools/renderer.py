@@ -1,23 +1,28 @@
 # Render offscreen -- make sure to set the PyOpenGL platform
 import os
 
-# os.environ["PYOPENGL_PLATFORM"] = "osmesa"
+os.environ["PYOPENGL_PLATFORM"] = "osmesa"
 # os.environ['PYOPENGL_PLATFORM'] = 'egl'
 import numpy as np
 import trimesh
 import pyrender
 
 
-def getCameraPose(overide=None):
-    if not overide:
-        enable_rotx = int(np.round(np.random.rand(1)))
-        enable_roty = int(np.round(np.random.rand(1)))
-        enable_rotz = int(np.round(np.random.rand(1)))
+def getCameraPose(override=None):
+    if not override:
+        prob1 = np.random.rand(1) + 0.3
+        prob2 = np.random.rand(1) + 0.3
+        prob3 = np.random.rand(1) + 0.3
+        # print(prob1)
+        # print(prob2)
+        # print(prob3)
+        enable_rotx = int(np.round(prob1))
+        enable_roty = int(np.round(prob2))
+        enable_rotz = int(np.round(prob3))
     else:
-        enable_rotx = overide[0]
-        enable_roty = overide[1]
-        enable_rotz = overide[2]
-
+        enable_rotx = override[0]
+        enable_roty = override[1]
+        enable_rotz = override[2]
     if enable_rotx:
         angle = np.random.rand(1)[0] * 2 * np.pi
         rotx = np.array([
@@ -46,11 +51,11 @@ def getCameraPose(overide=None):
     transl = np.array([
         [1.0, 0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 2.5],
+        [0.0, 0.0, 1.0, 3.0],
         [0.0, 0.0, 0.0, 1.0]
     ])
 
-    print(enable_rotx, enable_roty, enable_rotz)
+
 
     if (not enable_rotx) & (not enable_roty) & (not enable_rotz):
         camera_pose = np.matmul(np.eye(4, 4), transl)
@@ -84,12 +89,12 @@ def getCameraPose(overide=None):
     return camera_pose
 
 
-def render_depth(path):
+def render_depth(path, override=None):
     # Load the FUZE bottle trimesh and put it in a scene
     fuze_trimesh = trimesh.load(path)
 
     fuze_trimesh.vertices = (fuze_trimesh.vertices - np.amin(fuze_trimesh.vertices, axis=0)) / (
-                np.amax(fuze_trimesh.vertices, axis=0) - np.amin(fuze_trimesh.vertices, axis=0)) - 0.5
+                np.amax(fuze_trimesh.vertices, axis=0) - np.amin(fuze_trimesh.vertices, axis=0) + 0.001) - 0.5
 
 
     mesh = pyrender.Mesh.from_trimesh(fuze_trimesh)
@@ -100,7 +105,7 @@ def render_depth(path):
     camera = pyrender.PerspectiveCamera(yfov=np.pi / 5.0, znear=0.15)
 
 
-    camera_pose = getCameraPose()
+    camera_pose = getCameraPose(override)
 
     scene.add(camera, pose=camera_pose)
 
@@ -112,5 +117,6 @@ def render_depth(path):
     # Render the scene
     r = pyrender.OffscreenRenderer(200, 200)
     depth = r.render(scene, flags=pyrender.RenderFlags.DEPTH_ONLY)
+    depth = depth / (np.max(depth) + 0.0001)
 
     return depth
