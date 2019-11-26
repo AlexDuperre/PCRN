@@ -1,4 +1,6 @@
-# Description of PCRN code
+# Description of PCRN and PrimalNet code
+
+The PCRN code is located in the master branch and the PrimalNet is located in the PrimalNet branch.
 
 ## Prerequisites
 
@@ -13,12 +15,12 @@ The program runs on Unix operating systems only with the rendering module (for t
 - matplotlib
 - tqdm
 
-- OSMesa, mmatl's fork of PyOpenGL:
+- OSMesa, mmatl's fork of PyOpenGL
+
+To install: 
 
     sudo apt update
-
     sudo wget https://github.com/mmatl/travis_debs/raw/master/xenial/mesa_18.3.3-0.deb
-
     sudo dpkg -i ./mesa_18.3.3-0.deb || true
     sudo apt install -f
 
