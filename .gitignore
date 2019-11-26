@@ -9,3 +9,5 @@ Shape evolution/*
 
 performances/*
 *.ckpt
+
+__pycache__/

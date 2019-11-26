@@ -40,8 +40,8 @@ ids = range(DEVICE_ID.split(",").__len__())
 imsize = 200
 print("Using a batch size of :", batch_size)
 
-learning_rate = 0.0001
-specific_lr = 0.001
+learning_rate = 0.00001
+specific_lr = 0.0001
 validationRatio = 0.01
 validationTestRatio = 0.5
 
